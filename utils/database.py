@@ -1,13 +1,6 @@
-import pyodbc
+import sqlite3
 
 def get_connection():
-
-    conn = pyodbc.connect(
-        "DRIVER={ODBC Driver 18 for SQL Server};"
-        "SERVER=localhost\\CHARTXFLOW;"
-        "DATABASE=chartxflowDB;"
-        "Trusted_Connection=yes;"
-        "TrustServerCertificate=yes;"
-    )
-
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
     return conn
