@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Model Information - Gold Price Predictor{% endblock %}
+
+{% block content %}
+<div class="container py-5 mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-5">
+                <i class="fas fa-cogs text-warning me-3"></i>
+                Model Technical Information
+            </h1>
+        </div>
+    </div>
+
+    <!-- Model Architecture -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-microchip text-primary me-2"></i>
+                        Model Architecture
+                    </h2>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <tbody>
+                                <tr>
+                                    <th scope="row">Algorithm</th>
+                                    <td>Ridge Regression (L2 Regularization)</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Implementation</th>
+                                    <td>scikit-learn</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Features Count</th>
+                                    <td>{{ model_info.features_count }} input features</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Training Samples</th>
+                                    <td>{{ model_info.training_samples }} samples</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Test Samples</th>
+                                    <td>{{ model_info.test_samples }} samples</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-chart-bar text-success me-2"></i>
+                        Performance Metrics
+                    </h2>
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">{{ model_info.r2_score }}</div>
+                                <div class="metric-label">R² Score</div>
+                                <div class="metric-desc">Coefficient of determination</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">${{ model_info.rmse }}</div>
+                                <div class="metric-label">RMSE</div>
+                                <div class="metric-desc">Root Mean Square Error</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">${{ model_info.mae }}</div>
+                                <div class="metric-label">MAE</div>
+                                <div class="metric-desc">Mean Absolute Error</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">0.15%</div>
+                                <div class="metric-label">MAPE</div>
+                                <div class="metric-desc">Mean Absolute Percentage Error</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Importance -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-list text-info me-2"></i>
+                        Feature Categories
+                    </h2>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-category">
+                                <h4><i class="fas fa-money-bill text-success me-2"></i>Currency Exchange Rates</h4>
+                                <ul class="list-unstyled">
+                                    <li>EUR/USD Exchange Rate</li>
+                                    <li>GBP/USD Exchange Rate</li>
+                                    <li>JPY/USD Exchange Rate</li>
+                                    <li>Other major currencies</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-category">
+                                <h4><i class="fas fa-chart-line text-primary me-2"></i>Technical Indicators</h4>
+                                <ul class="list-unstyled">
+                                    <li>Moving Averages (7, 14, 30 days)</li>
+                                    <li>Price Momentum</li>
+                                    <li>Volatility Measures</li>
+                                    <li>Trading Volume</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-category">
+                                <h4><i class="fas fa-calendar text-warning me-2"></i>Temporal Features</h4>
+                                <ul class="list-unstyled">
+                                    <li>Day of Week</li>
+                                    <li>Month of Year</li>
+                                    <li>Quarter</li>
+                                    <li>Seasonal Patterns</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-category">
+                                <h4><i class="fas fa-percentage text-danger me-2"></i>Price Derivatives</h4>
+                                <ul class="list-unstyled">
+                                    <li>Price Changes</li>
+                                    <li>Percentage Changes</li>
+                                    <li>Rolling Statistics</li>
+                                    <li>Lagged Values</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-card {
+    padding: 1.5rem;
+    border-radius: 10px;
+    background: #f8f9fa;
+    transition: transform 0.3s;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.metric-label {
+    color: #6c757d;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.metric-desc {
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.feature-category {
+    padding: 1.5rem;
+    border-radius: 10px;
+    background: #f8f9fa;
+    height: 100%;
+}
+
+.feature-category h4 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #212529;
+}
+
+.feature-category ul li {
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+}
+
+.feature-category ul li:before {
+    content: "•";
+    color: #0d6efd;
+    font-weight: bold;
+    display: inline-block;
+    width: 1rem;
+    margin-left: -1rem;
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Gold Price Predictor{% endblock %}
+
+{% block content %}
+
+<section class="hero-section">
+<div class="hero-overlay">
+<div class="container">
+<div class="row min-vh-100 align-items-center">
+
+<div class="col-lg-8 mx-auto text-center text-white">
+
+<h1 class="display-2 fw-bold mb-4">
+<i class="fas fa-chart-line text-warning me-3"></i>
+Gold Price Predictor
+</h1>
+
+<p class="lead mb-5">
+Leverage advanced machine learning algorithms to predict gold prices with 99.99% accuracy.
+Our Ridge Regression model analyzes market trends and provides reliable forecasts.
+</p>
+
+<div class="row justify-content-center mb-5">
+
+<div class="col-md-3 mb-3">
+<div class="price-card">
+<div class="price-icon">
+<i class="fas fa-dollar-sign"></i>
+</div>
+
+<div class="price-info">
+<h3 class="price-value" id="currentPrice">
+{% if latest_price %}
+${{ "%.2f"|format(latest_price) }}
+{% else %}
+Loading...
+{% endif %}
+</h3>
+<p class="price-label">Real Gold Price (XAU/USD)</p>
+</div>
+</div>
+</div>
+
+
+<div class="col-md-3 mb-3">
+<div class="price-card">
+<div class="price-icon">
+<i class="fas fa-arrow-trend-up"></i>
+</div>
+
+<div class="price-info">
+<h3 id="priceChange"
+class="price-value {% if price_change and price_change > 0 %}text-success{% else %}text-danger{% endif %}">
+
+{% if price_change %}
+{% if price_change > 0 %}+{% endif %}
+${{ "%.2f"|format(price_change) }}
+{% else %}
+--
+{% endif %}
+
+</h3>
+
+<p class="price-label">24H Change</p>
+</div>
+</div>
+</div>
+
+
+<div class="col-md-3 mb-3">
+<div class="price-card">
+<div class="price-icon">
+<i class="fas fa-brain"></i>
+</div>
+
+<div class="price-info">
+<h3 class="price-value text-warning">99.99%</h3>
+<p class="price-label">Model Accuracy</p>
+</div>
+</div>
+</div>
+
+
+<div class="col-md-3 mb-3">
+<div class="price-card">
+
+<div class="price-icon">
+<i class="fas fa-lightbulb"></i>
+</div>
+
+<div class="price-info">
+
+<h3 id="recommendationSignal" class="price-value text-info">
+Waiting...
+</h3>
+
+<p class="price-label">
+AI Recommendation
+</p>
+
+</div>
+
+</div>
+</div>
+
+
+</div>
+
+<a href="{{ url_for('visualization') }}" class="btn btn-outline-light btn-lg">
+<i class="fas fa-chart-line me-2"></i>
+View Analytics
+</a>
+
+</div>
+</div>
+</div>
+</div>
+</section>
+
+
+<div class="container mt-5">
+<div class="card shadow">
+<div class="card-body">
+
+<h4 class="text-center mb-4">
+Live Gold Price Chart
+</h4>
+
+<canvas id="goldChart"></canvas>
+
+</div>
+</div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+<script>
+
+let chartLabels = []
+let chartPrices = []
+
+const ctx = document.getElementById("goldChart").getContext("2d")
+
+const goldChart = new Chart(ctx, {
+
+type: "line",
+
+data: {
+labels: chartLabels,
+
+datasets: [{
+label: "Gold Price (USD)",
+data: chartPrices,
+borderColor: "gold",
+backgroundColor: "rgba(255,215,0,0.2)",
+tension: 0.3
+}]
+},
+
+options: {
+responsive: true,
+scales: {
+y: {
+beginAtZero: false
+}
+}
+}
+
+})
+
+
+document.addEventListener("DOMContentLoaded", function(){
+
+updateCurrentPrice()
+
+setInterval(updateCurrentPrice, 5000)
+
+})
+
+
+function updateCurrentPrice(){
+
+fetch("/api/live-gold-price")
+
+.then(response => response.json())
+
+.then(data => {
+
+if(data.status === "success"){
+
+const price = data.data.current
+const change = data.data.change
+
+document.getElementById("currentPrice").textContent =
+"$" + price.toFixed(2)
+
+const changeElement = document.getElementById("priceChange")
+
+if(changeElement){
+
+changeElement.textContent =
+(change > 0 ? "+" : "") + "$" + change.toFixed(2)
+
+changeElement.className =
+"price-value " + (change > 0 ? "text-success" : "text-danger")
+
+}
+
+const now = new Date().toLocaleTimeString()
+
+chartLabels.push(now)
+chartPrices.push(price)
+
+if(chartLabels.length > 20){
+chartLabels.shift()
+chartPrices.shift()
+}
+
+goldChart.update()
+
+}
+
+})
+
+.catch(error => console.log("Price update error:", error))
+
+
+fetch("/api/predict", {
+method: "POST",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify({})
+})
+.then(res => res.json())
+.then(data => {
+
+const signal = data.recommendation
+const signalElement = document.getElementById("recommendationSignal")
+
+signalElement.textContent = signal
+
+if(signal === "BUY"){
+signalElement.className = "price-value text-success"
+}
+
+if(signal === "SELL"){
+signalElement.className = "price-value text-danger"
+}
+
+if(signal === "HOLD"){
+signalElement.className = "price-value text-warning"
+}
+
+})
+
+}
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,17 @@
+Open
+High
+Low
+Volume
+Day
+Month
+Year
+DayOfWeek
+Quarter
+Price_Range
+Price_Change
+Price_Change_Pct
+Close_Lag1
+Close_Lag2
+Volume_Lag1
+MA_5
+MA_10

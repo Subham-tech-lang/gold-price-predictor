@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}About - Gold Price Predictor{% endblock %}
+
+{% block content %}
+<div class="container py-5 mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-5">
+                <i class="fas fa-info-circle text-warning me-3"></i>
+                About Gold Price Predictor
+            </h1>
+        </div>
+    </div>
+
+    <!-- Project Overview -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-project-diagram text-primary me-2"></i>
+                        Project Overview
+                    </h2>
+                    <p class="lead">
+                        Gold Price Predictor is an advanced machine learning system designed to forecast gold prices with exceptional accuracy. Our platform combines historical data analysis with cutting-edge ML algorithms to provide reliable price predictions.
+                    </p>
+                    <p>
+                        The system utilizes a Ridge Regression model trained on extensive historical data, incorporating multiple features including currency exchange rates, market trends, and technical indicators to generate accurate predictions.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Information -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-brain text-success me-2"></i>
+                        Model Performance
+                    </h2>
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">{{ model_info.r2_score }}</div>
+                                <div class="metric-label">R² Score</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">${{ model_info.rmse }}</div>
+                                <div class="metric-label">RMSE</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">${{ model_info.mae }}</div>
+                                <div class="metric-label">MAE</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value">{{ model_info.features_count }}</div>
+                                <div class="metric-label">Features</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="row mb-5">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-list-check text-info me-2"></i>
+                        Key Features
+                    </h2>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-item">
+                                <i class="fas fa-chart-line text-primary"></i>
+                                <h4>Real-time Analysis</h4>
+                                <p>Track gold prices and market trends in real-time with interactive visualizations.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-item">
+                                <i class="fas fa-brain text-success"></i>
+                                <h4>ML-Powered Predictions</h4>
+                                <p>Advanced machine learning algorithms for accurate price forecasting.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-item">
+                                <i class="fas fa-chart-bar text-warning"></i>
+                                <h4>Market Insights</h4>
+                                <p>Comprehensive market analysis and currency correlation insights.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="feature-item">
+                                <i class="fas fa-clock text-info"></i>
+                                <h4>Historical Data</h4>
+                                <p>Access to extensive historical data for trend analysis.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-card {
+    padding: 1.5rem;
+    border-radius: 10px;
+    background: #f8f9fa;
+    transition: transform 0.3s;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.metric-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.feature-item {
+    padding: 1.5rem;
+    border-radius: 10px;
+    background: #f8f9fa;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+.feature-item i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.feature-item h4 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature-item p {
+    color: #6c757d;
+    margin-bottom: 0;
+}
+</style>
+{% endblock %} 

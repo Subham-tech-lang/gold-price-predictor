@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizations - Gold Price Predictor{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5 mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-5">
+                <i class="fas fa-chart-line text-warning me-3"></i>
+                Gold Price Analytics
+            </h1>
+        </div>
+    </div>
+
+    <!-- Price Overview Cards -->
+    <div class="row mb-5" id="priceOverview">
+        <div class="col-md-3 mb-3">
+            <div class="info-card bg-primary">
+                <div class="info-content">
+                    <div class="info-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="info-details">
+                        <h4 id="currentPriceCard">Loading...</h4>
+                        <p>Current Price</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="info-card bg-success">
+                <div class="info-content">
+                    <div class="info-icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="info-details">
+                        <h4 id="priceChange24h">Loading...</h4>
+                        <p>24H Change</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="info-card bg-info">
+                <div class="info-content">
+                    <div class="info-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="info-details">
+                        <h4 id="volatility">Loading...</h4>
+                        <p>Volatility</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="info-card bg-warning">
+                <div class="info-content">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="info-details">
+                        <h4 id="avgPrice30d">Loading...</h4>
+                        <p>30-Day Average</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row mb-5">
+        <!-- Price Trend Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="chart-header">
+                <h3><i class="fas fa-chart-line me-2"></i>Gold Price Trend (Last 365 Days)</h3>
+                <div class="chart-controls">
+                    <button class="btn btn-sm btn-outline-primary active" data-period="30">30D</button>
+                    <button class="btn btn-sm btn-outline-primary" data-period="90">90D</button>
+                    <button class="btn btn-sm btn-outline-primary" data-period="365">1Y</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Currency Correlation -->
+        <div class="col-lg-4 mb-4">
+            <div class="chart-header">
+                <h3><i class="fas fa-link me-2"></i>Currency Correlations</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="correlationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row mb-5">
+        <!-- Volume Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="chart-header">
+                <h3><i class="fas fa-chart-area me-2"></i>Trading Volume</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="volumeChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Price Distribution -->
+        <div class="col-lg-6 mb-4">
+            <div class="chart-header">
+                <h3><i class="fas fa-chart-bar me-2"></i>Price Distribution</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="distributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Performance Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="model-performance-section">
+                <h2 class="text-center mb-4">
+                    <i class="fas fa-brain text-warning me-2"></i>
+                    Model Performance Metrics
+                </h2>
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value">99.99%</div>
+                            <div class="metric-label">R² Score</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value">$2.80</div>
+                            <div class="metric-label">RMSE</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value">$2.13</div>
+                            <div class="metric-label">MAE</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value">0.15%</div>
+                            <div class="metric-label">MAPE</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

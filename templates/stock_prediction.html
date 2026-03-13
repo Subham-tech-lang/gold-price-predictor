@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Gold Stock Prediction{% endblock %}
+
+{% block content %}
+
+<style>
+    body {
+        background: linear-gradient(135deg, #1d2040 0%, #0f1024 100%);
+        color: #fff;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .page-title {
+        font-size: 3rem;
+        font-weight: 700;
+        text-align: center;
+        margin-top: 120px;
+    }
+
+    .page-subtitle {
+        font-size: 1.2rem;
+        text-align: center;
+        color: #cfcfe8;
+        margin-bottom: 50px;
+    }
+
+    .card-box {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 15px;
+        padding: 25px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0px 5px 25px rgba(0,0,0,0.3);
+    }
+
+    .card-box:hover {
+        transform: translateY(-5px);
+        transition: 0.3s;
+        border: 1px solid rgba(255,215,0,0.5);
+    }
+
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+
+    .prediction-value {
+        font-size: 3rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #ffd700, #ffae00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .predict-btn {
+        background: transparent;
+        border: 2px solid #ffd700;
+        color: #ffd700;
+        padding: 12px 22px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+    .predict-btn:hover {
+        background: #ffd700;
+        color: #000;
+    }
+
+    label {
+        color: #ddd;
+        font-weight: 500;
+    }
+
+    input {
+        background: rgba(255,255,255,0.07) !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        color: #fff !important;
+    }
+
+    input:focus {
+        border-color: #ffd700 !important;
+    }
+
+</style>
+
+<div class="container">
+
+    <h1 class="page-title">
+        <i class="fas fa-chart-line text-warning"></i> Gold Stock Price Prediction
+    </h1>
+
+    <p class="page-subtitle">
+        Enter stock data to obtain accurate AI-powered predictions with confidence analysis.
+    </p>
+
+    <div class="row g-5">
+
+        <!-- LEFT: INPUT FORM -->
+        <div class="col-md-6">
+            <div class="card-box">
+                <h3 class="section-title"><i class="fas fa-keyboard text-warning"></i> Input Stock Data</h3>
+
+                <form method="POST" action="/prediction-stock">
+
+                    <label>Date</label>
+                    <input type="date" name="date" class="form-control mb-3" required>
+
+                    <label>Open Price ($)</label>
+                    <input type="number" step="0.01" name="open" class="form-control mb-3" required>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>High Price ($)</label>
+                            <input type="number" step="0.01" name="high" class="form-control mb-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Low Price ($)</label>
+                            <input type="number" step="0.01" name="low" class="form-control mb-3" required>
+                        </div>
+                    </div>
+
+                    <label>Volume</label>
+                    <input type="number" name="volume" class="form-control mb-4" required>
+
+                    <button type="submit" class="predict-btn w-100">
+                        <i class="fas fa-calculator"></i> Calculate Prediction
+                    </button>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT: PREDICTION RESULT -->
+        <div class="col-md-6">
+            <div class="card-box text-center">
+
+                {% if show_result and prediction_result %}
+                    
+                    <h4 class="text-success mb-3">
+                        <i class="fas fa-check-circle"></i> Prediction Complete!
+                    </h4>
+
+                    <p class="text-muted">Predicted Close Price</p>
+
+                    <div class="prediction-value">
+                        ${{ prediction_result.predicted_price }}
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="text-warning">Model Used: {{ prediction_result.model_name }}</h5>
+                    <p class="text-muted">Confidence Score: {{ prediction_result.confidence }}%</p>
+
+                    <p><i class="fas fa-clock text-warning"></i> {{ prediction_result.prediction_date }}</p>
+
+                {% else %}
+
+                    <h4 class="text-muted">
+                        <i class="fas fa-hourglass-half"></i> Waiting for Input
+                    </h4>
+                    <p>Submit stock details to view the AI prediction.</p>
+
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
