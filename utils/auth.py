@@ -1,3 +1,4 @@
+import bcrypt
 from flask import Blueprint, request, redirect, render_template, session
 from flask_bcrypt import generate_password_hash, check_password_hash
 from utils.database import get_connection
@@ -63,21 +64,24 @@ def login():
         )
 
         user = cursor.fetchone()
-
         conn.close()
 
         if user:
-            if check_password_hash(user[2], password):
 
-                session["user_id"] = user[0]
-                session["username"] = user[1]
+            user_id = user[0]
+            username = user[1]
+            password_hash = user[2]
+
+            if bcrypt.check_password_hash(password_hash, password):
+
+                session["user_id"] = user_id
+                session["username"] = username
 
                 return redirect("/dashboard")
 
-        return render_template("login.html")
+        return render_template("login.html", error="Invalid email or password")
 
     return render_template("login.html")
-
 
 # =============================
 # LOGOUT

@@ -28,7 +28,7 @@ bcrypt = Bcrypt(app)
 app.register_blueprint(auth)
 
 # Initialize database tables
-init_db
+init_db()
 
 # =====================================================
 # GLOBAL VARIABLES
