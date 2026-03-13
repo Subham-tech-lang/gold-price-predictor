@@ -47,7 +47,7 @@ def signup():
 # LOGIN
 # =============================
 
-@auth.route("/login", methods=["GET","POST"])
+@auth.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
@@ -71,6 +71,10 @@ def login():
             user_id = user[0]
             username = user[1]
             password_hash = user[2]
+
+            # convert to bytes if needed
+            if isinstance(password_hash, str):
+                password_hash = password_hash.encode("utf-8")
 
             if bcrypt.check_password_hash(password_hash, password):
 
