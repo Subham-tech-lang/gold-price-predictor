@@ -1,11 +1,10 @@
-import bcrypt
 from flask import Blueprint, request, redirect, render_template, session
-from flask_bcrypt import generate_password_hash, check_password_hash
-from utils.database import get_connection
 from flask_bcrypt import Bcrypt
-bcrypt = Bcrypt()
+from utils.database import get_connection
 
 auth = Blueprint("auth", __name__)
+
+bcrypt = Bcrypt()
 
 
 # =============================
@@ -21,12 +20,14 @@ def signup():
         email = request.form["email"]
         password = request.form["password"]
 
-        password_hash = generate_password_hash(password).decode("utf-8")
+        # hash password
+        password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
 
         conn = get_connection()
         cursor = conn.cursor()
 
         try:
+
             cursor.execute(
                 "INSERT INTO users (username,email,password_hash) VALUES (?,?,?)",
                 (username, email, password_hash)
@@ -34,7 +35,8 @@ def signup():
 
             conn.commit()
 
-        except:
+        except Exception:
+
             conn.close()
             return "Username or Email already exists"
 
@@ -49,7 +51,7 @@ def signup():
 # LOGIN
 # =============================
 
-@auth.route("/login", methods=["GET","POST"])
+@auth.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
@@ -84,6 +86,7 @@ def login():
         return render_template("login.html", error="Invalid email or password")
 
     return render_template("login.html")
+
 
 # =============================
 # LOGOUT
