@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_bcrypt import Bcrypt
-
+from utils.database import init_db
 from utils.database import get_connection
 from utils.auth import auth
 from utils.live_price import get_live_gold_price
@@ -27,6 +27,8 @@ bcrypt = Bcrypt(app)
 # register authentication blueprint
 app.register_blueprint(auth)
 
+# Initialize database tables
+init_db
 
 # =====================================================
 # GLOBAL VARIABLES
