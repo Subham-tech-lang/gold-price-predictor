@@ -100,7 +100,7 @@ def inject_model_info():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return "app is working"
 
 @app.route("/visualization")
 def visualization():
