@@ -1,280 +1,286 @@
-function formatCurrency(value){
-return "$"+Number(value).toFixed(2)
+console.log("charts.js loaded ✅");
+
+function formatCurrency(value) {
+    return "$" + Number(value || 0).toFixed(2);
 }
 
-function formatNumber(value,decimals=2){
-return Number(value).toFixed(decimals)
+function formatNumber(value, decimals = 2) {
+    return Number(value || 0).toFixed(decimals);
 }
 
-let charts={}
+let charts = {};
 
-document.addEventListener("DOMContentLoaded",function(){
+document.addEventListener("DOMContentLoaded", () => {
 
-initializeCharts()
-loadPredictionComparison()
-loadHistoricalData()
-loadCorrelationData()
-loadPriceAnalysis()
+    console.log("DOM ready ✅");
 
-setInterval(loadPredictionComparison,5000)
+    initializeCharts();
 
-})
+    loadHistoricalData();
+    loadCorrelationData();
+    loadPriceAnalysis();
 
-function initializeCharts(){
+    updateLive();
+    setInterval(updateLive, 5000);
+});
 
-const commonOptions={
-responsive:true,
-maintainAspectRatio:false
+// ==============================
+// INIT CHARTS
+// ==============================
+
+function initializeCharts() {
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false
+    };
+
+    const priceCtx = document.getElementById("priceChart")?.getContext("2d");
+
+    if (priceCtx) {
+        charts.priceChart = new Chart(priceCtx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Live Gold Price",
+                    data: [],
+                    borderColor: "#FFD700",
+                    backgroundColor: "rgba(255,215,0,0.2)",
+                    borderWidth: 3,
+                    tension: 0.4
+                }]
+            },
+            options: commonOptions
+        });
+    }
+
+    const corrCtx = document.getElementById("correlationChart")?.getContext("2d");
+
+    if (corrCtx) {
+        charts.correlationChart = new Chart(corrCtx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Correlation",
+                    data: [],
+                    backgroundColor: "#36A2EB"
+                }]
+            },
+            options: commonOptions
+        });
+    }
+
+    const volumeCtx = document.getElementById("volumeChart")?.getContext("2d");
+
+    if (volumeCtx) {
+        charts.volumeChart = new Chart(volumeCtx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Volume",
+                    data: [],
+                    backgroundColor: "#4BC0C0"
+                }]
+            },
+            options: commonOptions
+        });
+    }
+
+    const distCtx = document.getElementById("distributionChart")?.getContext("2d");
+
+    if (distCtx) {
+        charts.distributionChart = new Chart(distCtx, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Frequency",
+                    data: [],
+                    backgroundColor: "#9966FF"
+                }]
+            },
+            options: commonOptions
+        });
+    }
 }
 
-const priceCtx=document.getElementById("priceChart").getContext("2d")
+// ==============================
+// LIVE UPDATE
+// ==============================
 
-charts.priceChart=new Chart(priceCtx,{
-type:"line",
-data:{
-labels:[],
-datasets:[{
-label:"Gold Price (USD)",
-data:[],
-borderColor:"#FFD700",
-backgroundColor:"rgba(255,215,0,0.2)",
-borderWidth:3,
-tension:0.4
-}]
-},
-options:commonOptions
-})
 
-const corrCtx=document.getElementById("correlationChart").getContext("2d")
+function updateLive() {
 
-charts.correlationChart=new Chart(corrCtx,{
-type:"bar",
-data:{
-labels:[],
-datasets:[{
-label:"Correlation",
-data:[],
-backgroundColor:"#36A2EB"
-}]
-},
-options:commonOptions
-})
+    fetch("/api/live-gold-price")
+    .then(res => res.json())
+    .then(res => {
 
-const volumeCtx=document.getElementById("volumeChart").getContext("2d")
+        const data = res.data || res;
 
-charts.volumeChart=new Chart(volumeCtx,{
-type:"bar",
-data:{
-labels:[],
-datasets:[{
-label:"Volume",
-data:[],
-backgroundColor:"#4BC0C0"
-}]
-},
-options:commonOptions
-})
+        const price = Number(data.current || 0);
+        const change = Number(data.change || 0);
 
-const distCtx=document.getElementById("distributionChart").getContext("2d")
+        // ✅ SAFE DOM UPDATE (NO CRASH)
+        const priceEl = document.getElementById("currentPriceCard");
+        const changeEl = document.getElementById("priceChange24h");
 
-charts.distributionChart=new Chart(distCtx,{
-type:"bar",
-data:{
-labels:[],
-datasets:[{
-label:"Frequency",
-data:[],
-backgroundColor:"#9966FF"
-}]
-},
-options:commonOptions
-})
+        if (priceEl) {
+            priceEl.textContent = formatCurrency(price);
+        }
 
+        if (changeEl) {
+            changeEl.textContent =
+                (change >= 0 ? "+" : "") + formatCurrency(change);
+        }
+
+        // ✅ CHART SAFE UPDATE
+        if (!charts.priceChart) return;
+
+        const time = new Date().toLocaleTimeString();
+
+        charts.priceChart.data.labels.push(time);
+        charts.priceChart.data.datasets[0].data.push(price);
+
+        if (charts.priceChart.data.labels.length > 20) {
+            charts.priceChart.data.labels.shift();
+            charts.priceChart.data.datasets[0].data.shift();
+        }
+
+        charts.priceChart.update();
+
+    })
+    .catch(err => console.log("Live error:", err));
 }
 
-function loadHistoricalData(){
+// ==============================
+// HISTORICAL
+// ==============================
 
-fetch("/api/historical-data")
 
-.then(res=>res.json())
+function loadHistoricalData() {
 
-.then(data=>{
+    fetch("/api/historical-data")
+    .then(res => res.json())
+    .then(data => {
 
-charts.priceChart.data.labels=data.dates.slice(-90)
-charts.priceChart.data.datasets[0].data=data.prices.slice(-90)
-charts.priceChart.update()
+        console.log("HISTORICAL DATA:", data); // 🔍 DEBUG
 
-charts.volumeChart.data.labels=data.dates.slice(-30)
-charts.volumeChart.data.datasets[0].data=data.volume.slice(-30)
-charts.volumeChart.update()
+        if (!data || !data.prices || data.prices.length === 0) return;
 
-updateDistributionChart(data.prices)
+        // 🔹 PRICE CHART
+        if (charts.priceChart) {
+            charts.priceChart.data.labels = data.dates.slice(-60);
+            charts.priceChart.data.datasets[0].data = data.prices.slice(-60);
+            charts.priceChart.update();
+        }
 
-})
+        // 🔹 VOLUME CHART (FIXED)
+        if (charts.volumeChart) {
 
-.catch(err=>console.log("historical error",err))
+            const volumeData = data.volume && data.volume.length
+                ? data.volume.slice(-30)
+                : new Array(30).fill(0);
 
+            charts.volumeChart.data.labels = data.dates.slice(-30);
+            charts.volumeChart.data.datasets[0].data = volumeData;
+            charts.volumeChart.update();
+        }
+
+        // 🔹 DISTRIBUTION (FIXED)
+        if (data.prices.length > 0) {
+            updateDistributionChart(data.prices);
+        }
+
+    })
+    .catch(err => console.log("Historical error:", err));
 }
 
-function loadCorrelationData(){
+// ==============================
+// CORRELATION
+// ==============================
 
-fetch("/api/correlation-data")
+function loadCorrelationData() {
 
-.then(res=>res.json())
+    fetch("/api/correlation-data")
+    .then(res => res.json())
+    .then(data => {
 
-.then(data=>{
+        if (!charts.correlationChart) return;
 
-charts.correlationChart.data.labels=Object.keys(data)
-charts.correlationChart.data.datasets[0].data=Object.values(data)
-charts.correlationChart.update()
+        charts.correlationChart.data.labels = Object.keys(data);
+        charts.correlationChart.data.datasets[0].data = Object.values(data);
 
-})
+        charts.correlationChart.update();
 
-.catch(err=>console.log("correlation error",err))
-
+    });
 }
 
-function loadPriceAnalysis(){
+// ==============================
+// PRICE ANALYSIS
+// ==============================
 
-fetch("/api/price-analysis")
 
-.then(res=>res.json())
+function loadPriceAnalysis() {
 
-.then(data=>{
+    fetch("/api/price-analysis")
+    .then(res => res.json())
+    .then(data => {
 
-document.getElementById("currentPriceCard").textContent=
-formatCurrency(data.current_price)
+        const volEl = document.getElementById("volatility");
+        const avgEl = document.getElementById("avgPrice30d");
 
-document.getElementById("priceChange24h").textContent=
-(data.price_change_24h>=0?"+":"")+formatCurrency(data.price_change_24h)
+        if (volEl) {
+            volEl.textContent = formatNumber(data.volatility);
+        }
 
-document.getElementById("volatility").textContent=
-formatNumber(data.volatility)
+        if (avgEl) {
+            avgEl.textContent = formatCurrency(data.avg_price_30d);
+        }
 
-document.getElementById("avgPrice30d").textContent=
-formatCurrency(data.avg_price_30d)
-
-})
-
-.catch(err=>console.log("price analysis error",err))
-
+    });
 }
 
-function updateDistributionChart(prices){
 
-const bins=20
 
-const min=Math.min(...prices)
-const max=Math.max(...prices)
+// ==============================
+// DISTRIBUTION CHART
+// ==============================
 
-const binSize=(max-min)/bins
+function updateDistributionChart(prices) {
 
-const histogram=new Array(bins).fill(0)
-const labels=[]
+    if (!prices || prices.length === 0) return;
+    if (!charts.distributionChart) return;
 
-for(let i=0;i<bins;i++){
+    const bins = 20;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
 
-labels.push(
-"$"+(min+i*binSize).toFixed(0)+"-$"+(min+(i+1)*binSize).toFixed(0)
-)
+    if (min === max) return;
 
-}
+    const binSize = (max - min) / bins;
 
-prices.forEach(price=>{
+    const histogram = new Array(bins).fill(0);
+    const labels = [];
 
-const index=Math.min(Math.floor((price-min)/binSize),bins-1)
+    for (let i = 0; i < bins; i++) {
+        labels.push(
+            "$" + (min + i * binSize).toFixed(0) +
+            "-$" + (min + (i + 1) * binSize).toFixed(0)
+        );
+    }
 
-histogram[index]++
+    prices.forEach(price => {
+        const idx = Math.min(
+            Math.floor((price - min) / binSize),
+            bins - 1
+        );
+        histogram[idx]++;
+    });
 
-})
-
-charts.distributionChart.data.labels=labels
-charts.distributionChart.data.datasets[0].data=histogram
-charts.distributionChart.update()
-
-}
-
-setInterval(updateLiveDashboard, 5000);
-
-function updateLiveDashboard(){
-
-fetch("/api/price-analysis")
-
-.then(response => response.json())
-
-.then(data => {
-
-document.getElementById("currentPriceCard").textContent =
-"$" + data.current_price.toFixed(2)
-
-document.getElementById("priceChange24h").textContent =
-(data.price_change_24h >= 0 ? "+" : "") +
-"$" + data.price_change_24h.toFixed(2)
-
-document.getElementById("volatility").textContent =
-data.volatility.toFixed(2)
-
-document.getElementById("avgPrice30d").textContent =
-"$" + data.avg_price_30d.toFixed(2)
-
-})
-
-.catch(error => console.log(error))
-
-}
-
-function loadPredictionComparison(){
-
-fetch("/api/prediction-vs-real")
-
-.then(response => response.json())
-
-.then(data => {
-
-const ctx = document.getElementById("priceChart")
-
-charts.priceChart.data.labels = data.dates
-
-charts.priceChart.data.datasets = [
-
-{
-label: "Real Gold Price",
-data: data.real,
-borderColor: "#FFD700",
-backgroundColor: "rgba(255,215,0,0.15)",
-borderWidth: 3,
-tension: 0.4
-},
-
-{
-label: "Predicted Price",
-data: data.predicted,
-borderColor: "#00e6b8",
-backgroundColor: "rgba(0,230,184,0.05)",
-borderWidth: 2,
-borderDash: [6,4],
-tension: 0.4
-},
-
-{
-label: "Confidence",
-data: data.upper,
-borderColor: "transparent",
-backgroundColor: "rgba(0,230,184,0.15)",
-pointRadius: 0,
-fill: "+1"
-},
-
-{
-data: data.lower,
-borderColor: "transparent",
-pointRadius: 0
-}
-
-]
-
-charts.priceChart.update()
-
-})
-
+    charts.distributionChart.data.labels = labels;
+    charts.distributionChart.data.datasets[0].data = histogram;
+    charts.distributionChart.update();
 }

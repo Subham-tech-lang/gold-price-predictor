@@ -182,83 +182,87 @@ setInterval(updateCurrentPrice, 5000)
 })
 
 
-function updateCurrentPrice(){
+
+function updateCurrentPrice() {
 
 fetch("/api/live-gold-price")
 
-.then(response => response.json())
+.then(res => res.json())
 
-.then(data => {
+.then(res => {
 
-if(data.status === "success"){
+    // ✅ FIX: support both formats
+    const data = res.data || res;
 
-const price = data.data.current
-const change = data.data.change
+    if (!data) return;
 
-document.getElementById("currentPrice").textContent =
-"$" + price.toFixed(2)
+    const price = Number(data.current || 0);
+    const change = Number(data.change || 0);
 
-const changeElement = document.getElementById("priceChange")
+    // 🔹 PRICE
+    const priceEl = document.getElementById("currentPrice");
+    if (priceEl) {
+        priceEl.textContent = "$" + price.toFixed(2);
+    }
 
-if(changeElement){
+    // 🔹 CHANGE
+    const changeEl = document.getElementById("priceChange");
+    if (changeEl) {
 
-changeElement.textContent =
-(change > 0 ? "+" : "") + "$" + change.toFixed(2)
+        changeEl.textContent =
+            (change > 0 ? "+" : "") + "$" + change.toFixed(2);
 
-changeElement.className =
-"price-value " + (change > 0 ? "text-success" : "text-danger")
+        changeEl.className =
+            "price-value " + (change > 0 ? "text-success" : "text-danger");
+    }
 
-}
+    // 🔹 CHART UPDATE
+    const now = new Date().toLocaleTimeString();
 
-const now = new Date().toLocaleTimeString()
+    chartLabels.push(now);
+    chartPrices.push(price);
 
-chartLabels.push(now)
-chartPrices.push(price)
+    if (chartLabels.length > 20) {
+        chartLabels.shift();
+        chartPrices.shift();
+    }
 
-if(chartLabels.length > 20){
-chartLabels.shift()
-chartPrices.shift()
-}
-
-goldChart.update()
-
-}
+    goldChart.update();
 
 })
+.catch(err => console.log("Live error:", err));
 
-.catch(error => console.log("Price update error:", error))
 
-
+// 🔹 AI SIGNAL (UNCHANGED)
 fetch("/api/predict", {
 method: "POST",
 headers: {
-"Content-Type": "application/json"
+    "Content-Type": "application/json"
 },
 body: JSON.stringify({})
 })
 .then(res => res.json())
 .then(data => {
 
-const signal = data.recommendation
-const signalElement = document.getElementById("recommendationSignal")
+    const signal = data.recommendation;
+    const signalElement = document.getElementById("recommendationSignal");
 
-signalElement.textContent = signal
+    if (!signalElement) return;
 
-if(signal === "BUY"){
-signalElement.className = "price-value text-success"
-}
+    signalElement.textContent = signal;
 
-if(signal === "SELL"){
-signalElement.className = "price-value text-danger"
-}
+    if (signal === "BUY") {
+        signalElement.className = "price-value text-success";
+    } else if (signal === "SELL") {
+        signalElement.className = "price-value text-danger";
+    } else {
+        signalElement.className = "price-value text-warning";
+    }
 
-if(signal === "HOLD"){
-signalElement.className = "price-value text-warning"
-}
-
-})
+});
 
 }
+
 
 </script>
 
