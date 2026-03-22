@@ -34,6 +34,7 @@ function initializeCharts() {
         return new Chart(canvas.getContext("2d"), config);
     };
 
+    // 🔥 CANDLESTICK CHART
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
         data: {
@@ -56,6 +57,9 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: false,
             parsing: false,
+            plugins: {
+                legend: { display: false } // 🔥 cleaner UI
+            },
             scales: {
                 x: {
                     type: "time",
@@ -68,24 +72,63 @@ function initializeCharts() {
         }
     });
 
+    // 🔥 CORRELATION CHART
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#36A2EB" }] }
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Correlation",
+                data: [],
+                backgroundColor: "#36A2EB"
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false } // 🔥 remove "undefined"
+            }
+        }
     });
 
+    // 🔥 VOLUME CHART
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#4BC0C0" }] }
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Volume",
+                data: [],
+                backgroundColor: "#4BC0C0"
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false }
+            }
+        }
     });
 
+    // 🔥 DISTRIBUTION CHART
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#9966FF" }] }
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Frequency",
+                data: [],
+                backgroundColor: "#9966FF"
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false }
+            }
+        }
     });
 }
 
 // ==============================
-// 🔥 FIXED HISTORICAL DATA
+// HISTORICAL DATA (FIXED)
 // ==============================
 
 function loadHistoricalData() {
@@ -99,7 +142,7 @@ function loadHistoricalData() {
             const candles = [];
             const seen = new Set();
 
-            const limit = 25; // 🔥 IMPORTANT
+            const limit = 25;
             const start = Math.max(0, data.dates.length - limit);
 
             for (let i = start; i < data.dates.length; i++) {
@@ -118,7 +161,6 @@ function loadHistoricalData() {
                 });
             }
 
-            // 🔥 ensure proper order
             candles.sort((a, b) => a.x - b.x);
 
             charts.priceChart.data.datasets[0].data = candles;
@@ -137,7 +179,7 @@ function loadHistoricalData() {
 }
 
 // ==============================
-// LIVE
+// LIVE DATA
 // ==============================
 
 function updateLive() {
@@ -149,11 +191,20 @@ function updateLive() {
             const price = Number(res.current || 0);
             const change = Number(res.change || 0);
 
-            document.getElementById("currentPriceCard").textContent = "$" + price.toFixed(2);
-            document.getElementById("priceChange24h").textContent =
-                (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
+            const priceEl = document.getElementById("currentPriceCard");
+            const changeEl = document.getElementById("priceChange24h");
 
-        });
+            if (priceEl) {
+                priceEl.textContent = "$" + price.toFixed(2);
+            }
+
+            if (changeEl) {
+                changeEl.textContent =
+                    (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
+            }
+
+        })
+        .catch(err => console.log("Live error:", err));
 }
 
 // ==============================
@@ -166,16 +217,19 @@ function loadCorrelationData() {
         .then(res => res.json())
         .then(data => {
 
+            if (!charts.correlationChart) return;
+
             charts.correlationChart.data.labels = Object.keys(data);
             charts.correlationChart.data.datasets[0].data =
                 Object.values(data).map(Number);
 
             charts.correlationChart.update();
-        });
+        })
+        .catch(err => console.log("Correlation error:", err));
 }
 
 // ==============================
-// ANALYSIS
+// PRICE ANALYSIS
 // ==============================
 
 function loadPriceAnalysis() {
@@ -184,12 +238,20 @@ function loadPriceAnalysis() {
         .then(res => res.json())
         .then(data => {
 
-            document.getElementById("volatility").textContent =
-                Number(data.volatility).toFixed(2);
+            const volEl = document.getElementById("volatility");
+            const avgEl = document.getElementById("avgPrice30d");
 
-            document.getElementById("avgPrice30d").textContent =
-                "$" + Number(data.avg_price_30d).toFixed(2);
-        });
+            if (volEl) {
+                volEl.textContent = Number(data.volatility || 0).toFixed(2);
+            }
+
+            if (avgEl) {
+                avgEl.textContent =
+                    "$" + Number(data.avg_price_30d || 0).toFixed(2);
+            }
+
+        })
+        .catch(err => console.log("Analysis error:", err));
 }
 
 // ==============================
@@ -197,6 +259,8 @@ function loadPriceAnalysis() {
 // ==============================
 
 function updateDistributionChart(prices) {
+
+    if (!charts.distributionChart || !prices || prices.length === 0) return;
 
     const bins = 12;
 
