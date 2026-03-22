@@ -154,13 +154,12 @@ def prediction_stock():
             # 🔥 REALISTIC BLEND (MARKET FIRST)
             # =====================================
 
-            pred = (0.8 * market_price) + (0.2 * model_pred)
+            # 🔥 VERY CLOSE TO MARKET
 
-            # small natural fluctuation
-            pred += np.random.uniform(-10, 10)
-
+            pred = (0.95 * market_price) + (0.05 * model_pred)
+            pred += np.random.uniform(-2, 2)
             pred = round(pred, 2)
-
+            
             result = {
                 "predicted_price": pred,
                 "model_name": "Ridge Regression (Market-Aware)",
