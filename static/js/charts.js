@@ -3,7 +3,7 @@ console.log("charts.js loaded ✅");
 let charts = {};
 
 // ==============================
-// INIT ON LOAD
+// INIT
 // ==============================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -27,79 +27,55 @@ if (window.Chart && window['chartjs-chart-financial']) {
 }
 
 // ==============================
-// CROSSHAIR
-// ==============================
-
-const crosshairPlugin = {
-    id: "crosshair",
-    afterDraw(chart) {
-
-        const active = chart.tooltip?._active;
-        if (!active || active.length === 0) return;
-
-        const ctx = chart.ctx;
-        const x = active[0].element.x;
-        const y = active[0].element.y;
-
-        const { top, bottom, left, right } = chart.chartArea;
-
-        ctx.save();
-        ctx.setLineDash([4, 4]);
-
-        ctx.beginPath();
-        ctx.moveTo(x, top);
-        ctx.lineTo(x, bottom);
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(left, y);
-        ctx.lineTo(right, y);
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
-        ctx.stroke();
-
-        ctx.restore();
-    }
-};
-
-Chart.register(crosshairPlugin);
-
-// ==============================
-// INIT CHARTS (DESTROY FIX)
+// INIT CHARTS
 // ==============================
 
 function initializeCharts() {
 
     const createChart = (id, config) => {
-
         const canvas = document.getElementById(id);
         if (!canvas) return null;
 
-        // 🔥 DESTROY OLD CHART
+        // 🔥 HARD DESTROY
         if (charts[id]) {
             charts[id].destroy();
+            delete charts[id];
         }
 
         const chart = new Chart(canvas.getContext("2d"), config);
         charts[id] = chart;
-
         return chart;
     };
 
+    // ==============================
+    // 🔥 CANDLE CHART (FINAL FIX)
+    // ==============================
+
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
+
         data: {
             datasets: [{
                 label: "Gold Price",
                 data: [],
-                color: { up: "#26a69a", down: "#ef5350" },
-                borderColor: { up: "#26a69a", down: "#ef5350" }
+                parsing: false,
+                color: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                },
+                borderColor: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                }
             }]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
             parsing: false,
+
+            animation: false, // 🔥 VERY IMPORTANT
 
             interaction: {
                 mode: "index",
@@ -131,12 +107,18 @@ function initializeCharts() {
             scales: {
                 x: {
                     type: "time",
-                    time: { unit: "day" },
+                    time: {
+                        unit: "day",
+                        displayFormats: {
+                            day: "MMM dd"
+                        }
+                    },
                     ticks: {
                         autoSkip: true,
                         maxTicksLimit: 6
                     }
                 },
+
                 y: {
                     ticks: {
                         callback: v => "$" + v
@@ -146,24 +128,28 @@ function initializeCharts() {
         }
     });
 
+    // ==============================
+    // OTHER CHARTS
+    // ==============================
+
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [] }] }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#36A2EB" }] }
     });
 
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [] }] }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#4BC0C0" }] }
     });
 
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [] }] }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#9966FF" }] }
     });
 }
 
 // ==============================
-// HISTORICAL (CRITICAL FIX)
+// 🔥 DATA LOAD (CRITICAL FIX)
 // ==============================
 
 function loadHistoricalData() {
@@ -182,20 +168,25 @@ function loadHistoricalData() {
             for (let i = start; i < data.dates.length; i++) {
                 candles.push({
                     x: new Date(data.dates[i]),
-                    o: +data.open[i],
-                    h: +data.high[i],
-                    l: +data.low[i],
-                    c: +data.close[i]
+                    o: Number(data.open[i]),
+                    h: Number(data.high[i]),
+                    l: Number(data.low[i]),
+                    c: Number(data.close[i])
                 });
             }
 
-            // 🔥 RESET DATA (MOST IMPORTANT LINE)
-            charts.priceChart.data.datasets[0].data = [];
+            // 🔥 HARD RESET
+            charts.priceChart.data.datasets = [{
+                label: "Gold Price",
+                data: candles,
+                parsing: false,
+                color: { up: "#26a69a", down: "#ef5350" },
+                borderColor: { up: "#26a69a", down: "#ef5350" }
+            }];
 
-            charts.priceChart.data.datasets[0].data = candles;
+            charts.priceChart.update("none"); // 🔥 NO ANIMATION
 
-            charts.priceChart.update();
-
+            // VOLUME
             charts.volumeChart.data.labels = data.dates.slice(-limit);
             charts.volumeChart.data.datasets[0].data = data.volume.slice(-limit);
             charts.volumeChart.update();
