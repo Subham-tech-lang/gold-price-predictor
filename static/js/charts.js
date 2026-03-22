@@ -15,20 +15,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// REGISTER CHART + CROSSHAIR
+// REGISTER CHART + PLUGIN
 // ==============================
 
 if (window.Chart && window['chartjs-chart-financial']) {
     Chart.register(...Chart.registerables);
 }
 
-// 🔥 CROSSHAIR PLUGIN (WORKING)
+// 🔥 CROSSHAIR PLUGIN
 const crosshairPlugin = {
     id: "crosshair",
-
     afterDraw(chart) {
-        const active = chart.tooltip?._active;
 
+        const active = chart.tooltip?._active;
         if (!active || active.length === 0) return;
 
         const ctx = chart.ctx;
@@ -38,23 +37,22 @@ const crosshairPlugin = {
         const { top, bottom, left, right } = chart.chartArea;
 
         ctx.save();
-
-        ctx.setLineDash([4, 4]); // dotted style
+        ctx.setLineDash([4, 4]);
 
         // Vertical line
         ctx.beginPath();
         ctx.moveTo(x, top);
         ctx.lineTo(x, bottom);
-        ctx.lineWidth = 1;
         ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 1;
         ctx.stroke();
 
         // Horizontal line
         ctx.beginPath();
         ctx.moveTo(left, y);
         ctx.lineTo(right, y);
-        ctx.lineWidth = 1;
         ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 1;
         ctx.stroke();
 
         ctx.restore();
@@ -75,7 +73,7 @@ function initializeCharts() {
         return new Chart(canvas.getContext("2d"), config);
     };
 
-    // 🔥 CANDLESTICK (FINAL PRO VERSION)
+    // 🔥 CANDLESTICK CHART
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
         data: {
@@ -109,13 +107,21 @@ function initializeCharts() {
 
                 tooltip: {
                     enabled: true,
-                    intersect: false,
                     mode: "nearest",
+                    intersect: false,
+
                     callbacks: {
+                        // 🔥 FULL DATE HERE
                         title: (items) => {
                             const d = new Date(items[0].raw.x);
-                            return d.toDateString();
+                            return d.toLocaleDateString("en-US", {
+                                weekday: "short",
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric"
+                            });
                         },
+
                         label: (context) => {
                             const d = context.raw;
                             return [
@@ -132,6 +138,7 @@ function initializeCharts() {
             scales: {
                 x: {
                     type: "time",
+
                     time: {
                         unit: "day",
                         round: "day",
@@ -140,16 +147,23 @@ function initializeCharts() {
                             day: "MMM dd"
                         }
                     },
+
                     ticks: {
+                        color: "#ccc",
                         autoSkip: true,
-                        maxTicksLimit: 8
+                        maxTicksLimit: 10,
+                        maxRotation: 0
                     },
-                    grid: { display: false }
+
+                    grid: {
+                        display: false
+                    }
                 },
 
                 y: {
                     beginAtZero: false,
                     ticks: {
+                        color: "#ccc",
                         callback: value => "$" + value
                     }
                 }
@@ -219,20 +233,13 @@ function loadHistoricalData() {
             if (!data || !data.dates) return;
 
             const candles = [];
-            const seen = new Set();
+            const limit = 30;
 
-            const limit = 25;
             const start = Math.max(0, data.dates.length - limit);
 
             for (let i = start; i < data.dates.length; i++) {
-
-                const d = data.dates[i];
-
-                if (seen.has(d)) continue;
-                seen.add(d);
-
                 candles.push({
-                    x: new Date(d),
+                    x: new Date(data.dates[i]),
                     o: Number(data.open[i]),
                     h: Number(data.high[i]),
                     l: Number(data.low[i]),
@@ -250,11 +257,12 @@ function loadHistoricalData() {
             charts.volumeChart.update();
 
             updateDistributionChart(data.close);
-        });
+        })
+        .catch(err => console.log("Historical error:", err));
 }
 
 // ==============================
-// LIVE
+// LIVE PRICE
 // ==============================
 
 function updateLive() {
@@ -266,10 +274,13 @@ function updateLive() {
             const price = Number(res.current || 0);
             const change = Number(res.change || 0);
 
-            document.getElementById("currentPriceCard").textContent = "$" + price.toFixed(2);
+            document.getElementById("currentPriceCard").textContent =
+                "$" + price.toFixed(2);
+
             document.getElementById("priceChange24h").textContent =
                 (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
-        });
+        })
+        .catch(err => console.log("Live error:", err));
 }
 
 // ==============================
@@ -287,11 +298,12 @@ function loadCorrelationData() {
                 Object.values(data).map(Number);
 
             charts.correlationChart.update();
-        });
+        })
+        .catch(err => console.log("Correlation error:", err));
 }
 
 // ==============================
-// ANALYSIS
+// PRICE ANALYSIS
 // ==============================
 
 function loadPriceAnalysis() {
@@ -305,7 +317,8 @@ function loadPriceAnalysis() {
 
             document.getElementById("avgPrice30d").textContent =
                 "$" + Number(data.avg_price_30d).toFixed(2);
-        });
+        })
+        .catch(err => console.log("Analysis error:", err));
 }
 
 // ==============================
@@ -313,6 +326,8 @@ function loadPriceAnalysis() {
 // ==============================
 
 function updateDistributionChart(prices) {
+
+    if (!prices || prices.length === 0) return;
 
     const bins = 12;
 
