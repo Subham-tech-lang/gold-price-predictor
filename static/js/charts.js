@@ -230,11 +230,16 @@ function updateDistributionChart(prices) {
 
     if (!charts.distributionChart || !prices || prices.length === 0) return;
 
-    const bins = 15;
+    const bins = 12;
+
     const min = Math.min(...prices);
     const max = Math.max(...prices);
 
-    const step = (max - min) / bins;
+    // 🔥 FIX: avoid zero division
+    const range = max - min || 1;
+
+    const step = range / bins;
+
     const freq = new Array(bins).fill(0);
 
     prices.forEach(price => {
