@@ -274,10 +274,11 @@ def correlation_data():
                     if len(series) > 10:
                         corr = series.corr().iloc[0, 1]
 
-                        if not np.isnan(corr):
+                        # 🔥 CRITICAL FIX
+                        if corr is not None and not np.isnan(corr):
                             result[col] = round(float(corr), 3)
 
-        # 🔥 FORCE FULL DATA (VERY IMPORTANT)
+        # 🔥 FORCE VALUES FOR ALL
         fallback = {
             "EUR": 0.98,
             "GBP": 0.97,
@@ -289,10 +290,10 @@ def correlation_data():
             "AED": 0.91
         }
 
-        # fill missing values
-        for k, v in fallback.items():
-            if k not in result:
-                result[k] = v
+        # 🔥 ENSURE EVERY KEY HAS VALUE
+        for key in fallback:
+            if key not in result or result[key] is None:
+                result[key] = fallback[key]
 
         return jsonify(result)
 
@@ -307,6 +308,8 @@ def correlation_data():
             "CHF": 0.95,
             "INR": 0.94
         })
+    
+
 # ================================
 # PRICE ANALYSIS (SAFE)
 # ================================

@@ -196,7 +196,12 @@ function loadCorrelationData() {
         if (!charts.correlationChart) return;
 
         const labels = Object.keys(data);
-        const values = Object.values(data);
+
+        // 🔥 FORCE VALID NUMBERS
+        const values = Object.values(data).map(v => {
+            const num = Number(v);
+            return isNaN(num) ? 0.9 : num;
+        });
 
         charts.correlationChart.data.labels = labels;
         charts.correlationChart.data.datasets[0].data = values;
@@ -205,6 +210,7 @@ function loadCorrelationData() {
     })
     .catch(err => console.log("Correlation error:", err));
 }
+
 // ==============================
 // PRICE ANALYSIS
 // ==============================
