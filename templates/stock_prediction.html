@@ -46,13 +46,21 @@
     }
 
     .prediction-value {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #ffd700, #ffae00);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+    font-size: 3rem;
+    font-weight: 700;
 
+    background: linear-gradient(90deg, #ffd700, #ffae00);
+
+    /* Standard */
+    background-clip: text;
+
+    /* Webkit (Chrome, Edge, Safari) */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* Fallback */
+    color: #ffd700;
+}
     .trend-up { color: #28a745; font-weight: 600; }
     .trend-down { color: #dc3545; font-weight: 600; }
     .trend-side { color: #ffc107; font-weight: 600; }
