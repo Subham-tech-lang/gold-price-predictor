@@ -36,41 +36,128 @@ function initializeCharts() {
 
     // 🔥 CANDLESTICK CHART
     charts.priceChart = createChart("priceChart", {
-        type: "candlestick",
-        data: {
-            datasets: [{
-                label: "Gold Price",
-                data: [],
-                color: {
-                    up: "#26a69a",
-                    down: "#ef5350"
-                },
-                borderColor: {
-                    up: "#26a69a",
-                    down: "#ef5350"
-                },
-                barThickness: 6,
-                maxBarThickness: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            parsing: false,
-            plugins: {
-                legend: { display: false } // 🔥 cleaner UI
+    type: "candlestick",
+    data: {
+        datasets: [{
+            label: "Gold Price",
+            data: [],
+            color: {
+                up: "#26a69a",
+                down: "#ef5350"
             },
-            scales: {
-                x: {
-                    type: "time",
-                    time: { unit: "day" }
-                },
-                y: {
-                    beginAtZero: false
+            borderColor: {
+                up: "#26a69a",
+                down: "#ef5350"
+            },
+            barThickness: 6,
+            maxBarThickness: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        parsing: false,
+
+        interaction: {
+            mode: "index",
+            intersect: false
+        },
+
+        plugins: {
+            legend: { display: false },
+
+            // 🔥 OHLC TOOLTIP
+            tooltip: {
+                enabled: true,
+                mode: "nearest",
+                intersect: false,
+                callbacks: {
+                    title: (items) => {
+                        const d = new Date(items[0].raw.x);
+                        return d.toDateString(); // clean date
+                    },
+                    label: (context) => {
+                        const d = context.raw;
+                        return [
+                            "Open : $" + d.o,
+                            "High : $" + d.h,
+                            "Low  : $" + d.l,
+                            "Close: $" + d.c
+                        ];
+                    }
                 }
             }
-        }
-    });
+        },
+
+        scales: {
+            x: {
+                type: "time",
+
+                // 🔥 FORCE DAILY CANDLES
+                time: {
+                    unit: "day",
+                    round: "day",
+                    tooltipFormat: "MMM dd yyyy",
+                    displayFormats: {
+                        day: "MMM dd"
+                    }
+                },
+
+                ticks: {
+                    autoSkip: true,
+                    maxTicksLimit: 8
+                },
+
+                grid: {
+                    display: false
+                }
+            },
+
+            y: {
+                beginAtZero: false,
+                ticks: {
+                    callback: value => "$" + value
+                }
+            }
+        },
+
+        // 🔥 CROSSHAIR PLUGIN (CUSTOM)
+        plugins: [{
+            id: "crosshair",
+
+            afterDraw(chart) {
+                if (!chart.tooltip || !chart.tooltip._active || chart.tooltip._active.length === 0) return;
+
+                const ctx = chart.ctx;
+                const activePoint = chart.tooltip._active[0];
+                const x = activePoint.element.x;
+                const y = activePoint.element.y;
+
+                const { top, bottom, left, right } = chart.chartArea;
+
+                ctx.save();
+
+                // 🔵 Vertical Line
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "rgba(255,255,255,0.3)";
+                ctx.stroke();
+
+                // 🔵 Horizontal Line
+                ctx.beginPath();
+                ctx.moveTo(left, y);
+                ctx.lineTo(right, y);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "rgba(255,255,255,0.3)";
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }]
+    }
+});
 
     // 🔥 CORRELATION CHART
     charts.correlationChart = createChart("correlationChart", {
