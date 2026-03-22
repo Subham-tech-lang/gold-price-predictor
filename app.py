@@ -4,6 +4,7 @@ import numpy as np
 import yfinance as yf
 import joblib
 import os
+import requests
 from datetime import datetime
 
 app = Flask(__name__)
