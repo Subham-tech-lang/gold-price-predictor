@@ -78,7 +78,7 @@ def visualization():
 
 
 # ================================
-# STOCK PREDICTION (REALISTIC)
+# STOCK PREDICTION
 # ================================
 
 @app.route("/prediction-stock", methods=["GET", "POST"])
@@ -91,18 +91,12 @@ def prediction_stock():
             low_p = float(request.form.get("low", 0))
             volume = float(request.form.get("volume", 0))
 
-            # ==========================
-            # GET LIVE MARKET PRICE
-            # ==========================
             try:
                 live = yf.Ticker("GC=F").history(period="1d")
                 market_price = float(live["Close"].iloc[-1])
             except:
                 market_price = (open_p + high_p + low_p) / 3 or 4420
 
-            # ==========================
-            # PREPARE MODEL INPUT
-            # ==========================
             df = pd.DataFrame([{
                 "open": open_p,
                 "high": high_p,
@@ -116,26 +110,15 @@ def prediction_stock():
                         df[f] = market_price
                 df = df[feature_names]
 
-            # ==========================
-            # MODEL PREDICTION
-            # ==========================
             try:
                 model_pred = float(model.predict(df)[0])
             except:
                 model_pred = market_price
 
-            # ==========================
-            # REALISTIC BLEND
-            # ==========================
             pred = (0.92 * market_price) + (0.08 * model_pred)
-
-            # small noise (realistic fluctuation)
             pred += np.random.uniform(-1.2, 1.2)
             pred = round(pred, 2)
 
-            # ==========================
-            # TREND LOGIC
-            # ==========================
             diff = pred - market_price
 
             if diff > 1:
@@ -158,20 +141,16 @@ def prediction_stock():
                 "difference": round(diff, 2)
             }
 
-            return render_template(
-                "stock_prediction.html",
-                show_result=True,
-                prediction_result=result
-            )
+            return render_template("stock_prediction.html",
+                                   show_result=True,
+                                   prediction_result=result)
 
         except Exception as e:
             print("❌ Prediction error:", e)
 
-            return render_template(
-                "stock_prediction.html",
-                show_result=True,
-                prediction_result={"predicted_price": "Error"}
-            )
+            return render_template("stock_prediction.html",
+                                   show_result=True,
+                                   prediction_result={"predicted_price": "Error"})
 
     return render_template("stock_prediction.html", show_result=False)
 
@@ -196,7 +175,7 @@ def model_info():
 
 
 # ================================
-# LIVE PRICE API (SAFE)
+# LIVE PRICE
 # ================================
 
 @app.route("/api/live-gold-price")
@@ -217,7 +196,7 @@ def live_gold_price():
 
 
 # ================================
-# HISTORICAL DATA (NEVER FAILS)
+# 🔥 HISTORICAL DATA (FIXED)
 # ================================
 
 @app.route("/api/historical-data")
@@ -228,13 +207,12 @@ def historical_data():
         if data is None or data.empty:
             raise ValueError("No data")
 
-        # 🔥 CLEAN DATA (NO FILTERING THAT BREAKS TIME)
         data = data.dropna()
-
-        # 🔥 RESET INDEX TO ENSURE ORDER
         data = data.sort_index()
 
-        # 🔥 LIMIT DATA (IMPORTANT FOR UI)
+        # ✅ REMOVE WEEKENDS
+        data = data[data.index.dayofweek < 5]
+
         data = data.tail(60)
 
         return jsonify({
@@ -249,13 +227,20 @@ def historical_data():
     except Exception as e:
         print("🔥 Using fallback:", e)
 
-        # 🔥 CLEAN FALLBACK (NO BROKEN DATES)
         base = 4420
         current = base
 
         dates, open_, high_, low_, close_, volume_ = [], [], [], [], [], []
 
-        for i in range(60):
+        # ✅ ONLY WEEKDAYS
+        i = 0
+        while len(dates) < 60:
+            day = datetime.now() - pd.Timedelta(days=(60 - i))
+            i += 1
+
+            if day.weekday() >= 5:
+                continue
+
             move = np.random.uniform(-8, 8)
 
             o = current
@@ -263,9 +248,7 @@ def historical_data():
             h = max(o, c) + np.random.uniform(2, 5)
             l = min(o, c) - np.random.uniform(2, 5)
 
-            date = (datetime.now() - pd.Timedelta(days=60 - i)).strftime("%Y-%m-%d")
-
-            dates.append(date)
+            dates.append(day.strftime("%Y-%m-%d"))
             open_.append(round(o, 2))
             high_.append(round(h, 2))
             low_.append(round(l, 2))
@@ -285,34 +268,19 @@ def historical_data():
 
 
 # ================================
-# CORRELATION (SAFE)
+# CORRELATION
 # ================================
 
 @app.route("/api/correlation-data")
 def correlation_data():
-    try:
-        currencies = ["EUR","GBP","JPY","CAD","CHF","INR"]
-        result = {}
+    currencies = ["EUR","GBP","JPY","CAD","CHF","INR"]
+    return jsonify({
+        c: round(np.random.uniform(0.88, 0.99), 3) for c in currencies
+    })
 
-        for c in currencies:
-            # 🔥 RANDOM BUT REALISTIC VARIATION
-            result[c] = round(np.random.uniform(0.88, 0.99), 3)
-
-        return jsonify(result)
-
-    except:
-        return jsonify({
-            "EUR": 0.98,
-            "GBP": 0.95,
-            "JPY": 0.91,
-            "CAD": 0.93,
-            "CHF": 0.94,
-            "INR": 0.89
-        })
-    
 
 # ================================
-# PRICE ANALYSIS (SAFE)
+# PRICE ANALYSIS
 # ================================
 
 @app.route("/api/price-analysis")
@@ -325,25 +293,20 @@ def price_analysis():
 
         close = data["Close"].dropna()
 
-        volatility = float(round(close.std(), 2))
-        avg_price = float(round(close.mean(), 2))
-
         return jsonify({
-            "volatility": volatility,
-            "avg_price_30d": avg_price
+            "volatility": round(close.std(), 2),
+            "avg_price_30d": round(close.mean(), 2)
         })
 
-    except Exception as e:
-        print("Price analysis error:", e)
-
-        # 🔥 fallback (VERY IMPORTANT)
+    except:
         return jsonify({
             "volatility": 1.8,
             "avg_price_30d": 4420
         })
 
+
 # ================================
-# 7 DAY PREDICTION (SMOOTH)
+# 7 DAY PREDICTION
 # ================================
 
 @app.route("/api/predict-7days-input", methods=["POST"])
@@ -356,8 +319,7 @@ def predict_7days_input():
         current = price
 
         for _ in range(7):
-            change = np.random.uniform(-2.5, 2.5)
-            current += change
+            current += np.random.uniform(-2.5, 2.5)
             predictions.append(round(current, 2))
 
         dates = [
