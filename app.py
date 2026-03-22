@@ -125,7 +125,7 @@ def model_info():
 @app.route("/api/live-gold-price")
 def live_gold_price():
     try:
-        data = yf.Ticker("GC=F").history(period="2d")
+        data = yf.Ticker("GLD").history(period="2d")
 
         current = float(data["Close"].iloc[-1])
         prev = float(data["Close"].iloc[-2]) if len(data) > 1 else current
@@ -144,7 +144,7 @@ def live_gold_price():
 
 @app.route("/api/historical-data")
 def historical_data():
-    data = yf.Ticker("GC=F").history(period="1y")
+    data = yf.Ticker("GLD").history(period="1y")
 
     prices = data["Close"].ffill().fillna(0).tolist()
 
@@ -163,7 +163,7 @@ def historical_data():
 @app.route("/api/price-analysis")
 def price_analysis():
     try:
-        data = yf.Ticker("GC=F").history(period="30d")
+        data = yf.Ticker("GLD").history(period="30d")
 
         current = float(data["Close"].iloc[-1])
         prev = float(data["Close"].iloc[-2])
@@ -239,7 +239,7 @@ def predict():
 @app.route("/api/prediction-vs-real")
 def prediction_vs_real():
     try:
-        data = yf.Ticker("GC=F").history(period="30d")
+        data = yf.Ticker("GLD").history(period="30d")
 
         prices = data["Close"].fillna(0).tolist()
         dates = data.index.strftime("%Y-%m-%d").tolist()
@@ -264,4 +264,4 @@ def prediction_vs_real():
 # =====================================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
