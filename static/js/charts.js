@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// 🔥 REGISTER FINANCIAL CHART
+// REGISTER FINANCIAL CHART
 // ==============================
 
 if (window.Chart && window['chartjs-chart-financial']) {
@@ -25,7 +25,7 @@ if (window.Chart && window['chartjs-chart-financial']) {
 }
 
 // ==============================
-// INIT CHARTS (FIXED)
+// INIT CHARTS (FINAL FIXED)
 // ==============================
 
 function initializeCharts() {
@@ -36,26 +36,61 @@ function initializeCharts() {
         return new Chart(canvas.getContext("2d"), config);
     };
 
-    // 🔥 CANDLESTICK FIXED
+    // 🔥 CLEAN CANDLESTICK
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
         data: {
             datasets: [{
                 label: "Gold Price",
-                data: []
+                data: [],
+
+                // COLORS
+                color: {
+                    up: "#26a69a",
+                    down: "#ef5350",
+                    unchanged: "#999"
+                },
+
+                borderColor: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                },
+
+                // THINNER CANDLES
+                barThickness: 6,
+                maxBarThickness: 8
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            parsing: false, // 🔥 IMPORTANT
+            parsing: false,
+
+            plugins: {
+                legend: {
+                    labels: { color: "#ccc" }
+                }
+            },
+
             scales: {
                 x: {
                     type: "time",
-                    time: { unit: "day" }
+                    time: { unit: "day" },
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 10,
+                        color: "#ccc"
+                    },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
                 },
                 y: {
-                    beginAtZero: false
+                    beginAtZero: false,
+                    ticks: { color: "#ccc" },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
                 }
             }
         }
@@ -126,7 +161,7 @@ function updateLive() {
 }
 
 // ==============================
-// 🔥 HISTORICAL FIX (REAL CANDLES)
+// HISTORICAL DATA (FINAL FIX)
 // ==============================
 
 function loadHistoricalData() {
@@ -140,10 +175,13 @@ function loadHistoricalData() {
                 return;
             }
 
-            // 🔥 CRITICAL FIX: ensure full dataset used
             const candles = [];
 
-            for (let i = 0; i < data.dates.length; i++) {
+            // 🔥 LIMIT DATA (VERY IMPORTANT)
+            const limit = 40;
+            const start = Math.max(0, data.dates.length - limit);
+
+            for (let i = start; i < data.dates.length; i++) {
                 candles.push({
                     x: new Date(data.dates[i]),
                     o: Number(data.open[i]),
@@ -153,8 +191,6 @@ function loadHistoricalData() {
                 });
             }
 
-            console.log("Candles loaded:", candles.length); // debug
-
             if (charts.priceChart) {
                 charts.priceChart.data.datasets[0].data = candles;
                 charts.priceChart.update();
@@ -162,8 +198,8 @@ function loadHistoricalData() {
 
             // VOLUME
             if (charts.volumeChart) {
-                charts.volumeChart.data.labels = data.dates;
-                charts.volumeChart.data.datasets[0].data = data.volume;
+                charts.volumeChart.data.labels = data.dates.slice(start);
+                charts.volumeChart.data.datasets[0].data = data.volume.slice(start);
                 charts.volumeChart.update();
             }
 
@@ -175,7 +211,7 @@ function loadHistoricalData() {
 }
 
 // ==============================
-// CORRELATION FIX
+// CORRELATION
 // ==============================
 
 function loadCorrelationData() {
@@ -186,11 +222,9 @@ function loadCorrelationData() {
 
             if (!charts.correlationChart) return;
 
-            const labels = Object.keys(data);
-            const values = Object.values(data).map(v => Number(v));
-
-            charts.correlationChart.data.labels = labels;
-            charts.correlationChart.data.datasets[0].data = values;
+            charts.correlationChart.data.labels = Object.keys(data);
+            charts.correlationChart.data.datasets[0].data =
+                Object.values(data).map(Number);
 
             charts.correlationChart.update();
         })
@@ -215,7 +249,8 @@ function loadPriceAnalysis() {
             }
 
             if (avgEl) {
-                avgEl.textContent = "$" + Number(data.avg_price_30d || 0).toFixed(2);
+                avgEl.textContent =
+                    "$" + Number(data.avg_price_30d || 0).toFixed(2);
             }
 
         })
@@ -223,7 +258,7 @@ function loadPriceAnalysis() {
 }
 
 // ==============================
-// DISTRIBUTION
+// DISTRIBUTION (STABLE)
 // ==============================
 
 function updateDistributionChart(prices) {
@@ -235,9 +270,7 @@ function updateDistributionChart(prices) {
     const min = Math.min(...prices);
     const max = Math.max(...prices);
 
-    // 🔥 FIX: avoid zero division
     const range = max - min || 1;
-
     const step = range / bins;
 
     const freq = new Array(bins).fill(0);
