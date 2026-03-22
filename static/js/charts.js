@@ -15,12 +15,53 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// REGISTER FINANCIAL
+// REGISTER CHART + CROSSHAIR
 // ==============================
 
 if (window.Chart && window['chartjs-chart-financial']) {
     Chart.register(...Chart.registerables);
 }
+
+// 🔥 CROSSHAIR PLUGIN (WORKING)
+const crosshairPlugin = {
+    id: "crosshair",
+
+    afterDraw(chart) {
+        const active = chart.tooltip?._active;
+
+        if (!active || active.length === 0) return;
+
+        const ctx = chart.ctx;
+        const x = active[0].element.x;
+        const y = active[0].element.y;
+
+        const { top, bottom, left, right } = chart.chartArea;
+
+        ctx.save();
+
+        ctx.setLineDash([4, 4]); // dotted style
+
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.stroke();
+
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.stroke();
+
+        ctx.restore();
+    }
+};
+
+Chart.register(crosshairPlugin);
 
 // ==============================
 // INIT CHARTS
@@ -34,132 +75,89 @@ function initializeCharts() {
         return new Chart(canvas.getContext("2d"), config);
     };
 
-    // 🔥 CANDLESTICK CHART
+    // 🔥 CANDLESTICK (FINAL PRO VERSION)
     charts.priceChart = createChart("priceChart", {
-    type: "candlestick",
-    data: {
-        datasets: [{
-            label: "Gold Price",
-            data: [],
-            color: {
-                up: "#26a69a",
-                down: "#ef5350"
-            },
-            borderColor: {
-                up: "#26a69a",
-                down: "#ef5350"
-            },
-            barThickness: 6,
-            maxBarThickness: 8
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        parsing: false,
-
-        interaction: {
-            mode: "index",
-            intersect: false
+        type: "candlestick",
+        data: {
+            datasets: [{
+                label: "Gold Price",
+                data: [],
+                color: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                },
+                borderColor: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                },
+                barThickness: 6,
+                maxBarThickness: 8
+            }]
         },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            parsing: false,
 
-        plugins: {
-            legend: { display: false },
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
 
-            // 🔥 OHLC TOOLTIP
-            tooltip: {
-                enabled: true,
-                mode: "nearest",
-                intersect: false,
-                callbacks: {
-                    title: (items) => {
-                        const d = new Date(items[0].raw.x);
-                        return d.toDateString(); // clean date
+            plugins: {
+                legend: { display: false },
+
+                tooltip: {
+                    enabled: true,
+                    intersect: false,
+                    mode: "nearest",
+                    callbacks: {
+                        title: (items) => {
+                            const d = new Date(items[0].raw.x);
+                            return d.toDateString();
+                        },
+                        label: (context) => {
+                            const d = context.raw;
+                            return [
+                                "Open : $" + d.o,
+                                "High : $" + d.h,
+                                "Low  : $" + d.l,
+                                "Close: $" + d.c
+                            ];
+                        }
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        unit: "day",
+                        round: "day",
+                        tooltipFormat: "MMM dd yyyy",
+                        displayFormats: {
+                            day: "MMM dd"
+                        }
                     },
-                    label: (context) => {
-                        const d = context.raw;
-                        return [
-                            "Open : $" + d.o,
-                            "High : $" + d.h,
-                            "Low  : $" + d.l,
-                            "Close: $" + d.c
-                        ];
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    },
+                    grid: { display: false }
+                },
+
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: value => "$" + value
                     }
                 }
             }
-        },
+        }
+    });
 
-        scales: {
-            x: {
-                type: "time",
-
-                // 🔥 FORCE DAILY CANDLES
-                time: {
-                    unit: "day",
-                    round: "day",
-                    tooltipFormat: "MMM dd yyyy",
-                    displayFormats: {
-                        day: "MMM dd"
-                    }
-                },
-
-                ticks: {
-                    autoSkip: true,
-                    maxTicksLimit: 8
-                },
-
-                grid: {
-                    display: false
-                }
-            },
-
-            y: {
-                beginAtZero: false,
-                ticks: {
-                    callback: value => "$" + value
-                }
-            }
-        },
-
-        // 🔥 CROSSHAIR PLUGIN (CUSTOM)
-        plugins: [{
-            id: "crosshair",
-
-            afterDraw(chart) {
-                if (!chart.tooltip || !chart.tooltip._active || chart.tooltip._active.length === 0) return;
-
-                const ctx = chart.ctx;
-                const activePoint = chart.tooltip._active[0];
-                const x = activePoint.element.x;
-                const y = activePoint.element.y;
-
-                const { top, bottom, left, right } = chart.chartArea;
-
-                ctx.save();
-
-                // 🔵 Vertical Line
-                ctx.beginPath();
-                ctx.moveTo(x, top);
-                ctx.lineTo(x, bottom);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "rgba(255,255,255,0.3)";
-                ctx.stroke();
-
-                // 🔵 Horizontal Line
-                ctx.beginPath();
-                ctx.moveTo(left, y);
-                ctx.lineTo(right, y);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "rgba(255,255,255,0.3)";
-                ctx.stroke();
-
-                ctx.restore();
-            }
-        }]
-    }
-});
-
-    // 🔥 CORRELATION CHART
+    // CORRELATION
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
         data: {
@@ -171,13 +169,11 @@ function initializeCharts() {
             }]
         },
         options: {
-            plugins: {
-                legend: { display: false } // 🔥 remove "undefined"
-            }
+            plugins: { legend: { display: false } }
         }
     });
 
-    // 🔥 VOLUME CHART
+    // VOLUME
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
         data: {
@@ -189,13 +185,11 @@ function initializeCharts() {
             }]
         },
         options: {
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 
-    // 🔥 DISTRIBUTION CHART
+    // DISTRIBUTION
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
         data: {
@@ -207,15 +201,13 @@ function initializeCharts() {
             }]
         },
         options: {
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
 
 // ==============================
-// HISTORICAL DATA (FIXED)
+// HISTORICAL DATA
 // ==============================
 
 function loadHistoricalData() {
@@ -253,20 +245,16 @@ function loadHistoricalData() {
             charts.priceChart.data.datasets[0].data = candles;
             charts.priceChart.update();
 
-            // VOLUME
             charts.volumeChart.data.labels = data.dates.slice(-limit);
             charts.volumeChart.data.datasets[0].data = data.volume.slice(-limit);
             charts.volumeChart.update();
 
-            // DISTRIBUTION
             updateDistributionChart(data.close);
-
-        })
-        .catch(err => console.log("Historical error:", err));
+        });
 }
 
 // ==============================
-// LIVE DATA
+// LIVE
 // ==============================
 
 function updateLive() {
@@ -278,20 +266,10 @@ function updateLive() {
             const price = Number(res.current || 0);
             const change = Number(res.change || 0);
 
-            const priceEl = document.getElementById("currentPriceCard");
-            const changeEl = document.getElementById("priceChange24h");
-
-            if (priceEl) {
-                priceEl.textContent = "$" + price.toFixed(2);
-            }
-
-            if (changeEl) {
-                changeEl.textContent =
-                    (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
-            }
-
-        })
-        .catch(err => console.log("Live error:", err));
+            document.getElementById("currentPriceCard").textContent = "$" + price.toFixed(2);
+            document.getElementById("priceChange24h").textContent =
+                (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
+        });
 }
 
 // ==============================
@@ -304,19 +282,16 @@ function loadCorrelationData() {
         .then(res => res.json())
         .then(data => {
 
-            if (!charts.correlationChart) return;
-
             charts.correlationChart.data.labels = Object.keys(data);
             charts.correlationChart.data.datasets[0].data =
                 Object.values(data).map(Number);
 
             charts.correlationChart.update();
-        })
-        .catch(err => console.log("Correlation error:", err));
+        });
 }
 
 // ==============================
-// PRICE ANALYSIS
+// ANALYSIS
 // ==============================
 
 function loadPriceAnalysis() {
@@ -325,20 +300,12 @@ function loadPriceAnalysis() {
         .then(res => res.json())
         .then(data => {
 
-            const volEl = document.getElementById("volatility");
-            const avgEl = document.getElementById("avgPrice30d");
+            document.getElementById("volatility").textContent =
+                Number(data.volatility).toFixed(2);
 
-            if (volEl) {
-                volEl.textContent = Number(data.volatility || 0).toFixed(2);
-            }
-
-            if (avgEl) {
-                avgEl.textContent =
-                    "$" + Number(data.avg_price_30d || 0).toFixed(2);
-            }
-
-        })
-        .catch(err => console.log("Analysis error:", err));
+            document.getElementById("avgPrice30d").textContent =
+                "$" + Number(data.avg_price_30d).toFixed(2);
+        });
 }
 
 // ==============================
@@ -346,8 +313,6 @@ function loadPriceAnalysis() {
 // ==============================
 
 function updateDistributionChart(prices) {
-
-    if (!charts.distributionChart || !prices || prices.length === 0) return;
 
     const bins = 12;
 
