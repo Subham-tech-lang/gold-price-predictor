@@ -190,19 +190,21 @@ function loadHistoricalData() {
 function loadCorrelationData() {
 
     fetch("/api/correlation-data")
-        .then(res => res.json())
-        .then(data => {
+    .then(res => res.json())
+    .then(data => {
 
-            if (!charts.correlationChart || !data) return;
+        if (!charts.correlationChart) return;
 
-            charts.correlationChart.data.labels = Object.keys(data);
-            charts.correlationChart.data.datasets[0].data = Object.values(data);
+        const labels = Object.keys(data);
+        const values = Object.values(data);
 
-            charts.correlationChart.update();
-        })
-        .catch(err => console.log("Correlation error:", err));
+        charts.correlationChart.data.labels = labels;
+        charts.correlationChart.data.datasets[0].data = values;
+
+        charts.correlationChart.update();
+    })
+    .catch(err => console.log("Correlation error:", err));
 }
-
 // ==============================
 // PRICE ANALYSIS
 // ==============================
