@@ -129,18 +129,23 @@ def model_info():
 @app.route("/api/live-gold-price")
 def live_gold_price():
     try:
-        data = yf.Ticker("GLD").history(period="2d")
+        url = "https://api.gold-api.com/price/XAU"
+        res = requests.get(url, timeout=5).json()
 
-        current = float(data["Close"].iloc[-1])
-        prev = float(data["Close"].iloc[-2]) if len(data) > 1 else current
+        price = float(res.get("price", 0))
 
         return jsonify({
-            "current": current,
-            "change": current - prev
+            "current": price,
+            "change": 0
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("API ERROR:", e)
+        return jsonify({
+            "current": 0,
+            "change": 0
+        })
+
 
 # =====================================
 # API: HISTORICAL DATA
