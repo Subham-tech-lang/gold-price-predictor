@@ -210,18 +210,27 @@ function loadCorrelationData() {
 function loadPriceAnalysis() {
 
     fetch("/api/price-analysis")
-        .then(res => res.json())
-        .then(data => {
+    .then(res => res.json())
+    .then(data => {
 
-            if (!data) return;
+        if (data.error) {
+            console.log("API error:", data.error);
+            return;
+        }
 
-            const volEl = document.getElementById("volatility");
-            const avgEl = document.getElementById("avgPrice30d");
+        const volEl = document.getElementById("volatility");
+        const avgEl = document.getElementById("avgPrice30d");
 
-            if (volEl) volEl.textContent = formatNumber(data.volatility);
-            if (avgEl) avgEl.textContent = formatCurrency(data.avg_price_30d);
-        })
-        .catch(err => console.log("Analysis error:", err));
+        if (volEl) {
+            volEl.textContent = Number(data.volatility || 0).toFixed(2);
+        }
+
+        if (avgEl) {
+            avgEl.textContent = "$" + Number(data.avg_price_30d || 0).toFixed(2);
+        }
+
+    })
+    .catch(err => console.log("Analysis error:", err));
 }
 
 // ==============================
