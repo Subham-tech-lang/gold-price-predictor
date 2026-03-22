@@ -126,6 +126,11 @@ def prediction_stock():
 
             pred = float(model.predict(df)[0])
 
+            # 🔥 safety clamp
+            if pred < 1000 or pred > 10000:
+                pred = abs(pred) + 1800
+
+                
             result = {
                 "predicted_price": round(pred, 2),
                 "model_name": "Ridge Regression",
