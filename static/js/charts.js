@@ -1,22 +1,6 @@
 console.log("charts.js loaded ✅");
 
-// ==============================
-// HELPERS
-// ==============================
-
-function formatCurrency(value) {
-    return "$" + Number(value || 0).toFixed(2);
-}
-
-function formatNumber(value, decimals = 2) {
-    return Number(value || 0).toFixed(decimals);
-}
-
 let charts = {};
-
-// ==============================
-// INIT
-// ==============================
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -33,15 +17,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// INIT CHARTS
+// INIT CHARTS (CANDLESTICK)
 // ==============================
 
 function initializeCharts() {
-
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false
-    };
 
     const createChart = (id, config) => {
         const ctx = document.getElementById(id)?.getContext("2d");
@@ -49,20 +28,19 @@ function initializeCharts() {
         return new Chart(ctx, config);
     };
 
+    // 🔥 CANDLESTICK CHART
     charts.priceChart = createChart("priceChart", {
-        type: "line",
+        type: "candlestick",
         data: {
-            labels: [],
             datasets: [{
-                label: "Live Gold Price",
-                data: [],
-                borderColor: "#FFD700",
-                backgroundColor: "rgba(255,215,0,0.2)",
-                borderWidth: 3,
-                tension: 0.4
+                label: "Gold Price",
+                data: []
             }]
         },
-        options: commonOptions
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
     });
 
     charts.correlationChart = createChart("correlationChart", {
@@ -74,8 +52,7 @@ function initializeCharts() {
                 data: [],
                 backgroundColor: "#36A2EB"
             }]
-        },
-        options: commonOptions
+        }
     });
 
     charts.volumeChart = createChart("volumeChart", {
@@ -87,8 +64,7 @@ function initializeCharts() {
                 data: [],
                 backgroundColor: "#4BC0C0"
             }]
-        },
-        options: commonOptions
+        }
     });
 
     charts.distributionChart = createChart("distributionChart", {
@@ -100,13 +76,12 @@ function initializeCharts() {
                 data: [],
                 backgroundColor: "#9966FF"
             }]
-        },
-        options: commonOptions
+        }
     });
 }
 
 // ==============================
-// LIVE PRICE
+// LIVE PRICE (NO CANDLE UPDATE)
 // ==============================
 
 function updateLive() {
@@ -115,39 +90,25 @@ function updateLive() {
         .then(res => res.json())
         .then(res => {
 
-            if (!res) return;
-
             const price = Number(res.current || 0);
             const change = Number(res.change || 0);
 
             const priceEl = document.getElementById("currentPriceCard");
             const changeEl = document.getElementById("priceChange24h");
 
-            if (priceEl) priceEl.textContent = formatCurrency(price);
+            if (priceEl) priceEl.textContent = "$" + price.toFixed(2);
+
             if (changeEl) {
                 changeEl.textContent =
-                    (change >= 0 ? "+" : "") + formatCurrency(change);
+                    (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
             }
 
-            if (!charts.priceChart) return;
-
-            const time = new Date().toLocaleTimeString();
-
-            charts.priceChart.data.labels.push(time);
-            charts.priceChart.data.datasets[0].data.push(price);
-
-            if (charts.priceChart.data.labels.length > 20) {
-                charts.priceChart.data.labels.shift();
-                charts.priceChart.data.datasets[0].data.shift();
-            }
-
-            charts.priceChart.update();
         })
         .catch(err => console.log("Live error:", err));
 }
 
 // ==============================
-// HISTORICAL DATA
+// HISTORICAL → CANDLE DATA
 // ==============================
 
 function loadHistoricalData() {
@@ -156,29 +117,33 @@ function loadHistoricalData() {
         .then(res => res.json())
         .then(data => {
 
-            if (!data || !data.prices || !data.dates) return;
+            if (!data || !data.open) return;
+
+            // 🔥 CANDLE FORMAT
+            const candles = data.dates.map((d, i) => ({
+                x: d,
+                o: data.open[i],
+                h: data.high[i],
+                l: data.low[i],
+                c: data.close[i]
+            }));
 
             // PRICE CHART
             if (charts.priceChart) {
-                charts.priceChart.data.labels = data.dates.slice(-60);
-                charts.priceChart.data.datasets[0].data = data.prices.slice(-60);
+                charts.priceChart.data.datasets[0].data = candles;
                 charts.priceChart.update();
             }
 
-            // VOLUME CHART (FIXED)
+            // VOLUME
             if (charts.volumeChart) {
-
-                const volumeData = (data.volume && data.volume.length)
-                    ? data.volume.slice(-30)
-                    : data.prices.slice(-30).map(() => Math.random() * 1000);
-
                 charts.volumeChart.data.labels = data.dates.slice(-30);
-                charts.volumeChart.data.datasets[0].data = volumeData;
+                charts.volumeChart.data.datasets[0].data = data.volume.slice(-30);
                 charts.volumeChart.update();
             }
 
-            // DISTRIBUTION
-            updateDistributionChart(data.prices);
+            // DISTRIBUTION (use CLOSE)
+            updateDistributionChart(data.close);
+
         })
         .catch(err => console.log("Historical error:", err));
 }
@@ -190,25 +155,23 @@ function loadHistoricalData() {
 function loadCorrelationData() {
 
     fetch("/api/correlation-data")
-    .then(res => res.json())
-    .then(data => {
+        .then(res => res.json())
+        .then(data => {
 
-        if (!charts.correlationChart) return;
+            if (!charts.correlationChart) return;
 
-        const labels = Object.keys(data);
+            const labels = Object.keys(data);
+            const values = Object.values(data).map(v => {
+                const num = Number(v);
+                return isNaN(num) ? 0.9 : num;
+            });
 
-        // 🔥 FORCE VALID NUMBERS
-        const values = Object.values(data).map(v => {
-            const num = Number(v);
-            return isNaN(num) ? 0.9 : num;
-        });
+            charts.correlationChart.data.labels = labels;
+            charts.correlationChart.data.datasets[0].data = values;
 
-        charts.correlationChart.data.labels = labels;
-        charts.correlationChart.data.datasets[0].data = values;
-
-        charts.correlationChart.update();
-    })
-    .catch(err => console.log("Correlation error:", err));
+            charts.correlationChart.update();
+        })
+        .catch(err => console.log("Correlation error:", err));
 }
 
 // ==============================
@@ -218,31 +181,26 @@ function loadCorrelationData() {
 function loadPriceAnalysis() {
 
     fetch("/api/price-analysis")
-    .then(res => res.json())
-    .then(data => {
+        .then(res => res.json())
+        .then(data => {
 
-        if (data.error) {
-            console.log("API error:", data.error);
-            return;
-        }
+            const volEl = document.getElementById("volatility");
+            const avgEl = document.getElementById("avgPrice30d");
 
-        const volEl = document.getElementById("volatility");
-        const avgEl = document.getElementById("avgPrice30d");
+            if (volEl) {
+                volEl.textContent = Number(data.volatility || 0).toFixed(2);
+            }
 
-        if (volEl) {
-            volEl.textContent = Number(data.volatility || 0).toFixed(2);
-        }
+            if (avgEl) {
+                avgEl.textContent = "$" + Number(data.avg_price_30d || 0).toFixed(2);
+            }
 
-        if (avgEl) {
-            avgEl.textContent = "$" + Number(data.avg_price_30d || 0).toFixed(2);
-        }
-
-    })
-    .catch(err => console.log("Analysis error:", err));
+        })
+        .catch(err => console.log("Analysis error:", err));
 }
 
 // ==============================
-// DISTRIBUTION CHART
+// DISTRIBUTION
 // ==============================
 
 function updateDistributionChart(prices) {
@@ -252,13 +210,6 @@ function updateDistributionChart(prices) {
     const bins = 15;
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-
-    if (min === max) {
-        charts.distributionChart.data.labels = ["Single Value"];
-        charts.distributionChart.data.datasets[0].data = [prices.length];
-        charts.distributionChart.update();
-        return;
-    }
 
     const step = (max - min) / bins;
     const freq = new Array(bins).fill(0);

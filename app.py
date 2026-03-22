@@ -223,34 +223,32 @@ def live_gold_price():
 @app.route("/api/historical-data")
 def historical_data():
     try:
-        data = yf.Ticker("GC=F").history(period="1y")
+        data = yf.Ticker("GC=F").history(period="3mo")
 
-        if data is None or data.empty:
-            raise ValueError("Empty data")
-
-        prices = data["Close"].fillna(method="ffill").tolist()
-        dates = data.index.strftime("%Y-%m-%d").tolist()
-
-        if "Volume" in data.columns and data["Volume"].sum() > 0:
-            volume = data["Volume"].fillna(0).tolist()
-        else:
-            volume = [p * 10 for p in prices]
+        if data.empty:
+            raise ValueError("No data")
 
         return jsonify({
-            "dates": dates,
-            "prices": prices,
-            "volume": volume
+            "dates": data.index.strftime("%Y-%m-%d").tolist(),
+            "open": data["Open"].fillna(0).tolist(),
+            "high": data["High"].fillna(0).tolist(),
+            "low": data["Low"].fillna(0).tolist(),
+            "close": data["Close"].fillna(0).tolist(),
+            "volume": data["Volume"].fillna(0).tolist()
         })
 
     except Exception as e:
-        print("🔥 HISTORICAL ERROR:", e)
+        print("Candle API error:", e)
 
-        dummy = [4400 + i for i in range(60)]
-
+        # fallback dummy candles
+        base = 4400
         return jsonify({
-            "dates": [f"Day {i}" for i in range(60)],
-            "prices": dummy,
-            "volume": [p * 5 for p in dummy]
+            "dates": [f"Day {i}" for i in range(30)],
+            "open": [base + i for i in range(30)],
+            "high": [base + i + 5 for i in range(30)],
+            "low": [base + i - 5 for i in range(30)],
+            "close": [base + i + np.random.uniform(-2, 2) for i in range(30)],
+            "volume": [1000] * 30
         })
 
 
