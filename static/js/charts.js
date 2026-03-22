@@ -2,18 +2,11 @@ console.log("charts.js loaded ✅");
 
 let charts = {};
 
-// ==============================
-// INIT
-// ==============================
-
 document.addEventListener("DOMContentLoaded", () => {
-
     initializeCharts();
-
     loadHistoricalData();
     loadCorrelationData();
     loadPriceAnalysis();
-
     updateLive();
     setInterval(updateLive, 5000);
 });
@@ -27,7 +20,7 @@ if (window.Chart && window['chartjs-chart-financial']) {
 }
 
 // ==============================
-// INIT CHARTS
+// INIT
 // ==============================
 
 function initializeCharts() {
@@ -36,10 +29,8 @@ function initializeCharts() {
         const canvas = document.getElementById(id);
         if (!canvas) return null;
 
-        // 🔥 HARD DESTROY
         if (charts[id]) {
             charts[id].destroy();
-            delete charts[id];
         }
 
         const chart = new Chart(canvas.getContext("2d"), config);
@@ -47,40 +38,21 @@ function initializeCharts() {
         return chart;
     };
 
-    // ==============================
-    // 🔥 CANDLE CHART (FINAL FIX)
-    // ==============================
-
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
-
         data: {
             datasets: [{
                 label: "Gold Price",
                 data: [],
                 parsing: false,
-                color: {
-                    up: "#26a69a",
-                    down: "#ef5350"
-                },
-                borderColor: {
-                    up: "#26a69a",
-                    down: "#ef5350"
-                }
+                color: { up: "#26a69a", down: "#ef5350" },
+                borderColor: { up: "#26a69a", down: "#ef5350" }
             }]
         },
-
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            parsing: false,
-
-            animation: false, // 🔥 VERY IMPORTANT
-
-            interaction: {
-                mode: "index",
-                intersect: false
-            },
+            animation: false,
 
             plugins: {
                 legend: { display: false },
@@ -109,16 +81,13 @@ function initializeCharts() {
                     type: "time",
                     time: {
                         unit: "day",
-                        displayFormats: {
-                            day: "MMM dd"
-                        }
+                        displayFormats: { day: "MMM dd" }
                     },
                     ticks: {
                         autoSkip: true,
                         maxTicksLimit: 6
                     }
                 },
-
                 y: {
                     ticks: {
                         callback: v => "$" + v
@@ -128,28 +97,24 @@ function initializeCharts() {
         }
     });
 
-    // ==============================
-    // OTHER CHARTS
-    // ==============================
-
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#36A2EB" }] }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#4BC0C0" }] }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: "#9966FF" }] }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 }
 
 // ==============================
-// 🔥 DATA LOAD (CRITICAL FIX)
+// 🔥 FIXED DATA LOAD
 // ==============================
 
 function loadHistoricalData() {
@@ -161,13 +126,13 @@ function loadHistoricalData() {
             if (!data || !data.dates) return;
 
             const candles = [];
+            const limit = 25;
 
-            const limit = 20;
             const start = Math.max(0, data.dates.length - limit);
 
             for (let i = start; i < data.dates.length; i++) {
                 candles.push({
-                    x: new Date(data.dates[i]),
+                    x: new Date(data.dates[i]).getTime(), // 🔥 FIX HERE
                     o: Number(data.open[i]),
                     h: Number(data.high[i]),
                     l: Number(data.low[i]),
@@ -175,18 +140,9 @@ function loadHistoricalData() {
                 });
             }
 
-            // 🔥 HARD RESET
-            charts.priceChart.data.datasets = [{
-                label: "Gold Price",
-                data: candles,
-                parsing: false,
-                color: { up: "#26a69a", down: "#ef5350" },
-                borderColor: { up: "#26a69a", down: "#ef5350" }
-            }];
+            charts.priceChart.data.datasets[0].data = candles;
+            charts.priceChart.update("none");
 
-            charts.priceChart.update("none"); // 🔥 NO ANIMATION
-
-            // VOLUME
             charts.volumeChart.data.labels = data.dates.slice(-limit);
             charts.volumeChart.data.datasets[0].data = data.volume.slice(-limit);
             charts.volumeChart.update();
