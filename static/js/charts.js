@@ -17,17 +17,26 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// INIT CHARTS (CANDLESTICK FIXED)
+// 🔥 REGISTER FINANCIAL CHART
+// ==============================
+
+if (window.Chart && window['chartjs-chart-financial']) {
+    Chart.register(...Chart.registerables);
+}
+
+// ==============================
+// INIT CHARTS (FIXED)
 // ==============================
 
 function initializeCharts() {
 
     const createChart = (id, config) => {
-        const ctx = document.getElementById(id)?.getContext("2d");
-        if (!ctx) return null;
-        return new Chart(ctx, config);
+        const canvas = document.getElementById(id);
+        if (!canvas) return null;
+        return new Chart(canvas.getContext("2d"), config);
     };
 
+    // 🔥 CANDLESTICK FIXED
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
         data: {
@@ -39,6 +48,7 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            parsing: false, // 🔥 IMPORTANT
             scales: {
                 x: {
                     type: "time",
@@ -89,7 +99,7 @@ function initializeCharts() {
 }
 
 // ==============================
-// LIVE PRICE (SAFE)
+// LIVE PRICE
 // ==============================
 
 function updateLive() {
@@ -116,7 +126,7 @@ function updateLive() {
 }
 
 // ==============================
-// HISTORICAL → CANDLE FIXED
+// 🔥 HISTORICAL FIX (REAL CANDLES)
 // ==============================
 
 function loadHistoricalData() {
@@ -125,16 +135,25 @@ function loadHistoricalData() {
         .then(res => res.json())
         .then(data => {
 
-            // 🔥 FIXED CONDITION
-            if (!data || !data.open || !data.dates) return;
+            if (!data || !data.open || data.open.length === 0) {
+                console.log("No candle data ❌");
+                return;
+            }
 
-            const candles = data.dates.map((d, i) => ({
-                x: new Date(d),   // 🔥 important for time scale
-                o: Number(data.open[i]),
-                h: Number(data.high[i]),
-                l: Number(data.low[i]),
-                c: Number(data.close[i])
-            }));
+            // 🔥 CRITICAL FIX: ensure full dataset used
+            const candles = [];
+
+            for (let i = 0; i < data.dates.length; i++) {
+                candles.push({
+                    x: new Date(data.dates[i]),
+                    o: Number(data.open[i]),
+                    h: Number(data.high[i]),
+                    l: Number(data.low[i]),
+                    c: Number(data.close[i])
+                });
+            }
+
+            console.log("Candles loaded:", candles.length); // debug
 
             if (charts.priceChart) {
                 charts.priceChart.data.datasets[0].data = candles;
@@ -143,8 +162,8 @@ function loadHistoricalData() {
 
             // VOLUME
             if (charts.volumeChart) {
-                charts.volumeChart.data.labels = data.dates.slice(-30);
-                charts.volumeChart.data.datasets[0].data = data.volume.slice(-30);
+                charts.volumeChart.data.labels = data.dates;
+                charts.volumeChart.data.datasets[0].data = data.volume;
                 charts.volumeChart.update();
             }
 
@@ -156,7 +175,7 @@ function loadHistoricalData() {
 }
 
 // ==============================
-// CORRELATION (IMPROVED)
+// CORRELATION FIX
 // ==============================
 
 function loadCorrelationData() {
@@ -168,14 +187,7 @@ function loadCorrelationData() {
             if (!charts.correlationChart) return;
 
             const labels = Object.keys(data);
-
-            const values = Object.values(data).map(v => {
-                let num = Number(v);
-                if (isNaN(num)) num = 0.9;
-
-                // 🔥 add slight variation (visual realism)
-                return num + (Math.random() * 0.02 - 0.01);
-            });
+            const values = Object.values(data).map(v => Number(v));
 
             charts.correlationChart.data.labels = labels;
             charts.correlationChart.data.datasets[0].data = values;
