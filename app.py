@@ -223,32 +223,64 @@ def live_gold_price():
 @app.route("/api/historical-data")
 def historical_data():
     try:
-        data = yf.Ticker("GC=F").history(period="3mo")
+        data = yf.Ticker("GC=F").history(period="3mo", interval="1d")
 
-        if data.empty:
+        if data is None or data.empty:
             raise ValueError("No data")
+
+        # 🔥 CLEAN + ENSURE VARIATION
+        data = data.dropna()
+
+        # remove flat/invalid rows
+        data = data[(data["High"] > data["Low"])]
+
+        # if still too small, fallback
+        if len(data) < 10:
+            raise ValueError("Insufficient data")
 
         return jsonify({
             "dates": data.index.strftime("%Y-%m-%d").tolist(),
-            "open": data["Open"].fillna(0).tolist(),
-            "high": data["High"].fillna(0).tolist(),
-            "low": data["Low"].fillna(0).tolist(),
-            "close": data["Close"].fillna(0).tolist(),
-            "volume": data["Volume"].fillna(0).tolist()
+            "open": data["Open"].round(2).tolist(),
+            "high": data["High"].round(2).tolist(),
+            "low": data["Low"].round(2).tolist(),
+            "close": data["Close"].round(2).tolist(),
+            "volume": data["Volume"].fillna(0).astype(float).tolist()
         })
 
     except Exception as e:
-        print("Candle API error:", e)
+        print("🔥 Candle API error:", e)
 
-        # fallback dummy candles
-        base = 4400
+        # 🔥 BETTER FALLBACK (REALISTIC MOVEMENT)
+        base = 4420
+        dates = []
+        open_, high_, low_, close_, volume_ = [], [], [], [], []
+
+        current = base
+
+        for i in range(30):
+            change = np.random.uniform(-5, 5)
+
+            o = current
+            c = current + change
+            h = max(o, c) + np.random.uniform(1, 3)
+            l = min(o, c) - np.random.uniform(1, 3)
+
+            dates.append(f"Day {i}")
+            open_.append(round(o, 2))
+            high_.append(round(h, 2))
+            low_.append(round(l, 2))
+            close_.append(round(c, 2))
+            volume_.append(1000 + np.random.randint(0, 500))
+
+            current = c
+
         return jsonify({
-            "dates": [f"Day {i}" for i in range(30)],
-            "open": [base + i for i in range(30)],
-            "high": [base + i + 5 for i in range(30)],
-            "low": [base + i - 5 for i in range(30)],
-            "close": [base + i + np.random.uniform(-2, 2) for i in range(30)],
-            "volume": [1000] * 30
+            "dates": dates,
+            "open": open_,
+            "high": high_,
+            "low": low_,
+            "close": close_,
+            "volume": volume_
         })
 
 
