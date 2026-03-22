@@ -4,8 +4,6 @@ let charts = {};
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    console.log("DOM ready ✅");
-
     initializeCharts();
 
     loadHistoricalData();
@@ -17,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================
-// REGISTER FINANCIAL CHART
+// REGISTER FINANCIAL
 // ==============================
 
 if (window.Chart && window['chartjs-chart-financial']) {
@@ -25,7 +23,7 @@ if (window.Chart && window['chartjs-chart-financial']) {
 }
 
 // ==============================
-// INIT CHARTS (FINAL FIXED)
+// INIT CHARTS
 // ==============================
 
 function initializeCharts() {
@@ -36,27 +34,20 @@ function initializeCharts() {
         return new Chart(canvas.getContext("2d"), config);
     };
 
-    // 🔥 CLEAN CANDLESTICK
     charts.priceChart = createChart("priceChart", {
         type: "candlestick",
         data: {
             datasets: [{
                 label: "Gold Price",
                 data: [],
-
-                // COLORS
                 color: {
                     up: "#26a69a",
-                    down: "#ef5350",
-                    unchanged: "#999"
+                    down: "#ef5350"
                 },
-
                 borderColor: {
                     up: "#26a69a",
                     down: "#ef5350"
                 },
-
-                // THINNER CANDLES
                 barThickness: 6,
                 maxBarThickness: 8
             }]
@@ -65,32 +56,13 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: false,
             parsing: false,
-
-            plugins: {
-                legend: {
-                    labels: { color: "#ccc" }
-                }
-            },
-
             scales: {
                 x: {
                     type: "time",
-                    time: { unit: "day" },
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 10,
-                        color: "#ccc"
-                    },
-                    grid: {
-                        color: "rgba(255,255,255,0.05)"
-                    }
+                    time: { unit: "day" }
                 },
                 y: {
-                    beginAtZero: false,
-                    ticks: { color: "#ccc" },
-                    grid: {
-                        color: "rgba(255,255,255,0.05)"
-                    }
+                    beginAtZero: false
                 }
             }
         }
@@ -98,43 +70,74 @@ function initializeCharts() {
 
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Correlation",
-                data: [],
-                backgroundColor: "#36A2EB"
-            }]
-        }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#36A2EB" }] }
     });
 
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Volume",
-                data: [],
-                backgroundColor: "#4BC0C0"
-            }]
-        }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#4BC0C0" }] }
     });
 
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Frequency",
-                data: [],
-                backgroundColor: "#9966FF"
-            }]
-        }
+        data: { labels: [], datasets: [{ data: [], backgroundColor: "#9966FF" }] }
     });
 }
 
 // ==============================
-// LIVE PRICE
+// 🔥 FIXED HISTORICAL DATA
+// ==============================
+
+function loadHistoricalData() {
+
+    fetch("/api/historical-data")
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data || !data.dates) return;
+
+            const candles = [];
+            const seen = new Set();
+
+            const limit = 25; // 🔥 IMPORTANT
+            const start = Math.max(0, data.dates.length - limit);
+
+            for (let i = start; i < data.dates.length; i++) {
+
+                const d = data.dates[i];
+
+                if (seen.has(d)) continue;
+                seen.add(d);
+
+                candles.push({
+                    x: new Date(d),
+                    o: Number(data.open[i]),
+                    h: Number(data.high[i]),
+                    l: Number(data.low[i]),
+                    c: Number(data.close[i])
+                });
+            }
+
+            // 🔥 ensure proper order
+            candles.sort((a, b) => a.x - b.x);
+
+            charts.priceChart.data.datasets[0].data = candles;
+            charts.priceChart.update();
+
+            // VOLUME
+            charts.volumeChart.data.labels = data.dates.slice(-limit);
+            charts.volumeChart.data.datasets[0].data = data.volume.slice(-limit);
+            charts.volumeChart.update();
+
+            // DISTRIBUTION
+            updateDistributionChart(data.close);
+
+        })
+        .catch(err => console.log("Historical error:", err));
+}
+
+// ==============================
+// LIVE
 // ==============================
 
 function updateLive() {
@@ -146,68 +149,11 @@ function updateLive() {
             const price = Number(res.current || 0);
             const change = Number(res.change || 0);
 
-            const priceEl = document.getElementById("currentPriceCard");
-            const changeEl = document.getElementById("priceChange24h");
+            document.getElementById("currentPriceCard").textContent = "$" + price.toFixed(2);
+            document.getElementById("priceChange24h").textContent =
+                (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
 
-            if (priceEl) priceEl.textContent = "$" + price.toFixed(2);
-
-            if (changeEl) {
-                changeEl.textContent =
-                    (change >= 0 ? "+" : "") + "$" + change.toFixed(2);
-            }
-
-        })
-        .catch(err => console.log("Live error:", err));
-}
-
-// ==============================
-// HISTORICAL DATA (FINAL FIX)
-// ==============================
-
-function loadHistoricalData() {
-
-    fetch("/api/historical-data")
-        .then(res => res.json())
-        .then(data => {
-
-            if (!data || !data.open || data.open.length === 0) {
-                console.log("No candle data ❌");
-                return;
-            }
-
-            const candles = [];
-
-            // 🔥 LIMIT DATA (VERY IMPORTANT)
-            const limit = 40;
-            const start = Math.max(0, data.dates.length - limit);
-
-            for (let i = start; i < data.dates.length; i++) {
-                candles.push({
-                    x: new Date(data.dates[i]),
-                    o: Number(data.open[i]),
-                    h: Number(data.high[i]),
-                    l: Number(data.low[i]),
-                    c: Number(data.close[i])
-                });
-            }
-
-            if (charts.priceChart) {
-                charts.priceChart.data.datasets[0].data = candles;
-                charts.priceChart.update();
-            }
-
-            // VOLUME
-            if (charts.volumeChart) {
-                charts.volumeChart.data.labels = data.dates.slice(start);
-                charts.volumeChart.data.datasets[0].data = data.volume.slice(start);
-                charts.volumeChart.update();
-            }
-
-            // DISTRIBUTION
-            updateDistributionChart(data.close);
-
-        })
-        .catch(err => console.log("Historical error:", err));
+        });
 }
 
 // ==============================
@@ -220,19 +166,16 @@ function loadCorrelationData() {
         .then(res => res.json())
         .then(data => {
 
-            if (!charts.correlationChart) return;
-
             charts.correlationChart.data.labels = Object.keys(data);
             charts.correlationChart.data.datasets[0].data =
                 Object.values(data).map(Number);
 
             charts.correlationChart.update();
-        })
-        .catch(err => console.log("Correlation error:", err));
+        });
 }
 
 // ==============================
-// PRICE ANALYSIS
+// ANALYSIS
 // ==============================
 
 function loadPriceAnalysis() {
@@ -241,44 +184,33 @@ function loadPriceAnalysis() {
         .then(res => res.json())
         .then(data => {
 
-            const volEl = document.getElementById("volatility");
-            const avgEl = document.getElementById("avgPrice30d");
+            document.getElementById("volatility").textContent =
+                Number(data.volatility).toFixed(2);
 
-            if (volEl) {
-                volEl.textContent = Number(data.volatility || 0).toFixed(2);
-            }
-
-            if (avgEl) {
-                avgEl.textContent =
-                    "$" + Number(data.avg_price_30d || 0).toFixed(2);
-            }
-
-        })
-        .catch(err => console.log("Analysis error:", err));
+            document.getElementById("avgPrice30d").textContent =
+                "$" + Number(data.avg_price_30d).toFixed(2);
+        });
 }
 
 // ==============================
-// DISTRIBUTION (STABLE)
+// DISTRIBUTION
 // ==============================
 
 function updateDistributionChart(prices) {
-
-    if (!charts.distributionChart || !prices || prices.length === 0) return;
 
     const bins = 12;
 
     const min = Math.min(...prices);
     const max = Math.max(...prices);
 
-    const range = max - min || 1;
-    const step = range / bins;
+    const step = (max - min || 1) / bins;
 
     const freq = new Array(bins).fill(0);
 
-    prices.forEach(price => {
-        let index = Math.floor((price - min) / step);
-        if (index >= bins) index = bins - 1;
-        freq[index]++;
+    prices.forEach(p => {
+        let i = Math.floor((p - min) / step);
+        if (i >= bins) i = bins - 1;
+        freq[i]++;
     });
 
     const labels = freq.map((_, i) =>

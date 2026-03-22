@@ -223,7 +223,7 @@ def live_gold_price():
 @app.route("/api/historical-data")
 def historical_data():
     try:
-        data = yf.Ticker("GC=F").history(period="6mo", interval="1d")
+        data = yf.Ticker("GC=F").history(period="3mo", interval="1d")
 
         if data is None or data.empty:
             raise ValueError("No data")
