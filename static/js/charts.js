@@ -2,6 +2,10 @@ console.log("charts.js loaded ✅");
 
 let charts = {};
 
+// ==============================
+// INIT ON LOAD
+// ==============================
+
 document.addEventListener("DOMContentLoaded", () => {
 
     initializeCharts();
@@ -61,15 +65,25 @@ const crosshairPlugin = {
 Chart.register(crosshairPlugin);
 
 // ==============================
-// INIT
+// INIT CHARTS (DESTROY FIX)
 // ==============================
 
 function initializeCharts() {
 
     const createChart = (id, config) => {
+
         const canvas = document.getElementById(id);
         if (!canvas) return null;
-        return new Chart(canvas.getContext("2d"), config);
+
+        // 🔥 DESTROY OLD CHART
+        if (charts[id]) {
+            charts[id].destroy();
+        }
+
+        const chart = new Chart(canvas.getContext("2d"), config);
+        charts[id] = chart;
+
+        return chart;
     };
 
     charts.priceChart = createChart("priceChart", {
@@ -96,18 +110,10 @@ function initializeCharts() {
                 legend: { display: false },
 
                 tooltip: {
-                    enabled: true,
-                    intersect: false,
-                    mode: "nearest",
-
                     callbacks: {
                         title: (items) => {
                             const d = new Date(items[0].raw.x);
-                            return d.toLocaleDateString("en-US", {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric"
-                            });
+                            return d.toDateString();
                         },
                         label: (ctx) => {
                             const d = ctx.raw;
@@ -125,27 +131,14 @@ function initializeCharts() {
             scales: {
                 x: {
                     type: "time",
-
-                    time: {
-                        unit: "day",
-                        displayFormats: {
-                            day: "MMM dd"
-                        }
-                    },
-
-                    // 🔥 KEY FIX
+                    time: { unit: "day" },
                     ticks: {
-                        color: "#ccc",
                         autoSkip: true,
-                        maxTicksLimit: 6   // 👈 fewer ticks → visible
-                    },
-
-                    grid: { display: false }
+                        maxTicksLimit: 6
+                    }
                 },
-
                 y: {
                     ticks: {
-                        color: "#ccc",
                         callback: v => "$" + v
                     }
                 }
@@ -155,31 +148,22 @@ function initializeCharts() {
 
     charts.correlationChart = createChart("correlationChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{ data: [], backgroundColor: "#36A2EB" }]
-        }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 
     charts.volumeChart = createChart("volumeChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{ data: [], backgroundColor: "#4BC0C0" }]
-        }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 
     charts.distributionChart = createChart("distributionChart", {
         type: "bar",
-        data: {
-            labels: [],
-            datasets: [{ data: [], backgroundColor: "#9966FF" }]
-        }
+        data: { labels: [], datasets: [{ data: [] }] }
     });
 }
 
 // ==============================
-// DATA LOAD
+// HISTORICAL (CRITICAL FIX)
 // ==============================
 
 function loadHistoricalData() {
@@ -192,8 +176,7 @@ function loadHistoricalData() {
 
             const candles = [];
 
-            const limit = 20; // 🔥 IMPORTANT (less candles = visible dates)
-
+            const limit = 20;
             const start = Math.max(0, data.dates.length - limit);
 
             for (let i = start; i < data.dates.length; i++) {
@@ -206,7 +189,11 @@ function loadHistoricalData() {
                 });
             }
 
+            // 🔥 RESET DATA (MOST IMPORTANT LINE)
+            charts.priceChart.data.datasets[0].data = [];
+
             charts.priceChart.data.datasets[0].data = candles;
+
             charts.priceChart.update();
 
             charts.volumeChart.data.labels = data.dates.slice(-limit);
@@ -239,7 +226,7 @@ function updateLive() {
 }
 
 // ==============================
-// OTHER APIs
+// OTHER
 // ==============================
 
 function loadCorrelationData() {
@@ -264,17 +251,11 @@ function loadPriceAnalysis() {
         });
 }
 
-// ==============================
-// DISTRIBUTION
-// ==============================
-
 function updateDistributionChart(prices) {
 
     const bins = 12;
-
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-
     const step = (max - min || 1) / bins;
 
     const freq = new Array(bins).fill(0);
