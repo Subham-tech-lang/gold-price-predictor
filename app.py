@@ -205,7 +205,7 @@ def historical_data():
         data = yf.Ticker("GC=F").history(period="3mo", interval="1d")
 
         if data is None or data.empty:
-            raise ValueError("No data")
+            return jsonify({"error": "No real data available"}), 500
 
         data = data.dropna()
         data = data.sort_index()
@@ -225,46 +225,8 @@ def historical_data():
         })
 
     except Exception as e:
-        print("🔥 Using fallback:", e)
-
-        base = 4420
-        current = base
-
-        dates, open_, high_, low_, close_, volume_ = [], [], [], [], [], []
-
-        # ✅ ONLY WEEKDAYS
-        i = 0
-        while len(dates) < 60:
-            day = datetime.now() - pd.Timedelta(days=(60 - i))
-            i += 1
-
-            if day.weekday() >= 5:
-                continue
-
-            move = np.random.uniform(-8, 8)
-
-            o = current
-            c = current + move
-            h = max(o, c) + np.random.uniform(2, 5)
-            l = min(o, c) - np.random.uniform(2, 5)
-
-            dates.append(day.strftime("%Y-%m-%d"))
-            open_.append(round(o, 2))
-            high_.append(round(h, 2))
-            low_.append(round(l, 2))
-            close_.append(round(c, 2))
-            volume_.append(np.random.randint(900, 1500))
-
-            current = c
-
-        return jsonify({
-            "dates": dates,
-            "open": open_,
-            "high": high_,
-            "low": low_,
-            "close": close_,
-            "volume": volume_
-        })
+        print("❌ REAL DATA FAILED:", e)
+        return jsonify({"error": "Data fetch failed"}), 500
 
 
 # ================================
