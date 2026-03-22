@@ -228,14 +228,14 @@ def historical_data():
         if data is None or data.empty:
             raise ValueError("No data")
 
+        # 🔥 CLEAN DATA (NO FILTERING THAT BREAKS TIME)
         data = data.dropna()
 
-        # 🔥 STRONG FILTER (IMPORTANT)
-        data = data[(data["High"] - data["Low"]) > 2]
+        # 🔥 RESET INDEX TO ENSURE ORDER
+        data = data.sort_index()
 
-        # 🔥 ensure enough movement
-        if len(data) < 20:
-            raise ValueError("Low variance")
+        # 🔥 LIMIT DATA (IMPORTANT FOR UI)
+        data = data.tail(60)
 
         return jsonify({
             "dates": data.index.strftime("%Y-%m-%d").tolist(),
@@ -249,24 +249,23 @@ def historical_data():
     except Exception as e:
         print("🔥 Using fallback:", e)
 
-        # 🔥 MUCH MORE REALISTIC DATA
+        # 🔥 CLEAN FALLBACK (NO BROKEN DATES)
         base = 4420
         current = base
 
         dates, open_, high_, low_, close_, volume_ = [], [], [], [], [], []
 
         for i in range(60):
-            move = np.random.uniform(-10, 10)
+            move = np.random.uniform(-8, 8)
 
             o = current
             c = current + move
-            h = max(o, c) + np.random.uniform(3, 8)
-            l = min(o, c) - np.random.uniform(3, 8)
+            h = max(o, c) + np.random.uniform(2, 5)
+            l = min(o, c) - np.random.uniform(2, 5)
 
-            dates.append(
-                (datetime.now() - pd.Timedelta(days=60-i)).strftime("%Y-%m-%d")
-            )
+            date = (datetime.now() - pd.Timedelta(days=60 - i)).strftime("%Y-%m-%d")
 
+            dates.append(date)
             open_.append(round(o, 2))
             high_.append(round(h, 2))
             low_.append(round(l, 2))
