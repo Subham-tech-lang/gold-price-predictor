@@ -4,6 +4,7 @@
 
 {% block content %}
 
+<!-- ================= HERO ================= -->
 <section class="hero-section">
 <div class="hero-overlay">
 <div class="container">
@@ -21,59 +22,35 @@ Leverage advanced machine learning algorithms to predict gold prices with 99.99%
 Our Ridge Regression model analyzes market trends and provides reliable forecasts.
 </p>
 
+<!-- ================= CARDS ================= -->
 <div class="row justify-content-center mb-5">
 
+<!-- PRICE -->
 <div class="col-md-3 mb-3">
 <div class="price-card">
-<div class="price-icon">
-<i class="fas fa-dollar-sign"></i>
-</div>
-
+<div class="price-icon"><i class="fas fa-dollar-sign"></i></div>
 <div class="price-info">
-<h3 class="price-value" id="currentPrice">
-{% if latest_price %}
-${{ "%.2f"|format(latest_price) }}
-{% else %}
-Loading...
-{% endif %}
-</h3>
+<h3 class="price-value" id="currentPrice">Loading...</h3>
 <p class="price-label">Real Gold Price (XAU/USD)</p>
 </div>
 </div>
 </div>
 
-
+<!-- CHANGE -->
 <div class="col-md-3 mb-3">
 <div class="price-card">
-<div class="price-icon">
-<i class="fas fa-arrow-trend-up"></i>
-</div>
-
+<div class="price-icon"><i class="fas fa-arrow-trend-up"></i></div>
 <div class="price-info">
-<h3 id="priceChange"
-class="price-value {% if price_change and price_change > 0 %}text-success{% else %}text-danger{% endif %}">
-
-{% if price_change %}
-{% if price_change > 0 %}+{% endif %}
-${{ "%.2f"|format(price_change) }}
-{% else %}
---
-{% endif %}
-
-</h3>
-
+<h3 id="priceChange" class="price-value">--</h3>
 <p class="price-label">24H Change</p>
 </div>
 </div>
 </div>
 
-
+<!-- ACCURACY -->
 <div class="col-md-3 mb-3">
 <div class="price-card">
-<div class="price-icon">
-<i class="fas fa-brain"></i>
-</div>
-
+<div class="price-icon"><i class="fas fa-brain"></i></div>
 <div class="price-info">
 <h3 class="price-value text-warning">99.99%</h3>
 <p class="price-label">Model Accuracy</p>
@@ -81,35 +58,23 @@ ${{ "%.2f"|format(price_change) }}
 </div>
 </div>
 
-
+<!-- SIGNAL -->
 <div class="col-md-3 mb-3">
 <div class="price-card">
-
-<div class="price-icon">
-<i class="fas fa-lightbulb"></i>
-</div>
-
+<div class="price-icon"><i class="fas fa-lightbulb"></i></div>
 <div class="price-info">
-
 <h3 id="recommendationSignal" class="price-value text-info">
 Waiting...
 </h3>
-
-<p class="price-label">
-AI Recommendation
-</p>
-
-</div>
-
+<p class="price-label">AI Recommendation</p>
 </div>
 </div>
-
+</div>
 
 </div>
 
 <a href="{{ url_for('visualization') }}" class="btn btn-outline-light btn-lg">
-<i class="fas fa-chart-line me-2"></i>
-View Analytics
+<i class="fas fa-chart-line me-2"></i>View Analytics
 </a>
 
 </div>
@@ -119,6 +84,7 @@ View Analytics
 </section>
 
 
+<!-- ================= CHART ================= -->
 <div class="container mt-5">
 <div class="card shadow">
 <div class="card-body">
@@ -138,131 +104,110 @@ Live Gold Price Chart
 
 {% block extra_scripts %}
 
+<!-- ✅ REQUIRED -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 
-let chartLabels = []
-let chartPrices = []
+console.log("HOME PAGE JS LOADED ✅");
 
-const ctx = document.getElementById("goldChart").getContext("2d")
+let chartLabels = [];
+let chartPrices = [];
+
+// ================= CHART INIT =================
+const ctx = document.getElementById("goldChart").getContext("2d");
 
 const goldChart = new Chart(ctx, {
-
-type: "line",
-
-data: {
-labels: chartLabels,
-
-datasets: [{
-label: "Gold Price (USD)",
-data: chartPrices,
-borderColor: "gold",
-backgroundColor: "rgba(255,215,0,0.2)",
-tension: 0.3
-}]
-},
-
-options: {
-responsive: true,
-scales: {
-y: {
-beginAtZero: false
-}
-}
-}
-
-})
-
-
-document.addEventListener("DOMContentLoaded", function(){
-
-updateCurrentPrice()
-
-setInterval(updateCurrentPrice, 5000)
-
-})
-
-
-
-function updateCurrentPrice() {
-
-fetch("/api/live-gold-price")
-
-.then(res => res.json())
-
-.then(res => {
-
-    // ✅ FIX: support both formats
-    const data = res.data || res;
-
-    if (!data) return;
-
-    const price = Number(data.current || 0);
-    const change = Number(data.change || 0);
-
-    // 🔹 PRICE
-    const priceEl = document.getElementById("currentPrice");
-    if (priceEl) {
-        priceEl.textContent = "$" + price.toFixed(2);
+    type: "line",
+    data: {
+        labels: chartLabels,
+        datasets: [{
+            label: "Gold Price (USD)",
+            data: chartPrices,
+            borderColor: "gold",
+            backgroundColor: "rgba(255,215,0,0.2)",
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true
     }
-
-    // 🔹 CHANGE
-    const changeEl = document.getElementById("priceChange");
-    if (changeEl) {
-
-        changeEl.textContent =
-            (change > 0 ? "+" : "") + "$" + change.toFixed(2);
-
-        changeEl.className =
-            "price-value " + (change > 0 ? "text-success" : "text-danger");
-    }
-
-    // 🔹 CHART UPDATE
-    const now = new Date().toLocaleTimeString();
-
-    chartLabels.push(now);
-    chartPrices.push(price);
-
-    if (chartLabels.length > 20) {
-        chartLabels.shift();
-        chartPrices.shift();
-    }
-
-    goldChart.update();
-
-})
-.catch(err => console.log("Live error:", err));
-
-
-// 🔹 AI SIGNAL (UNCHANGED)
-fetch("/api/predict", {
-method: "POST",
-headers: {
-    "Content-Type": "application/json"
-},
-body: JSON.stringify({})
-})
-.then(res => res.json())
-.then(data => {
-
-    const signal = data.recommendation;
-    const signalElement = document.getElementById("recommendationSignal");
-
-    if (!signalElement) return;
-
-    signalElement.textContent = signal;
-
-    if (signal === "BUY") {
-        signalElement.className = "price-value text-success";
-    } else if (signal === "SELL") {
-        signalElement.className = "price-value text-danger";
-    } else {
-        signalElement.className = "price-value text-warning";
-    }
-
 });
 
-}
+// ================= START =================
+document.addEventListener("DOMContentLoaded", () => {
+    updateData();
+    setInterval(updateData, 5000);
+});
 
+// ================= MAIN FUNCTION =================
+function updateData() {
+
+    // 🔹 LIVE PRICE
+    fetch("/api/live-gold-price")
+        .then(res => res.json())
+        .then(data => {
+
+            const price = Number(data.current || 0);
+            const change = Number(data.change || 0);
+
+            // PRICE
+            const priceEl = document.getElementById("currentPrice");
+            if (priceEl)
+                priceEl.textContent = "$" + price.toFixed(2);
+
+            // CHANGE
+            const changeEl = document.getElementById("priceChange");
+            if (changeEl) {
+                changeEl.textContent =
+                    (change > 0 ? "+" : "") + "$" + change.toFixed(2);
+
+                changeEl.className =
+                    "price-value " + (change > 0 ? "text-success" : "text-danger");
+            }
+
+            // CHART UPDATE
+            const now = new Date().toLocaleTimeString();
+
+            chartLabels.push(now);
+            chartPrices.push(price);
+
+            if (chartLabels.length > 20) {
+                chartLabels.shift();
+                chartPrices.shift();
+            }
+
+            goldChart.update();
+        })
+        .catch(err => console.log("Live error:", err));
+
+
+    // 🔹 AI SIGNAL
+    fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        const signal = data.recommendation;
+        const el = document.getElementById("recommendationSignal");
+
+        if (!el) return;
+
+        el.textContent = signal;
+
+        if (signal === "BUY") {
+            el.className = "price-value text-success";
+        } else if (signal === "SELL") {
+            el.className = "price-value text-danger";
+        } else {
+            el.className = "price-value text-warning";
+        }
+    })
+    .catch(err => console.log("Signal error:", err));
+}
 
 </script>
 
