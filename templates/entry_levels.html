@@ -4,15 +4,12 @@
 
 <div style="padding: 20px;">
 
-    <!-- Title -->
     <h2 style="text-align:center; margin-bottom:20px;">
         Entry Levels (Live Signals)
     </h2>
 
-    <!-- Chart -->
-    <div id="chart" style="height:500px; border-radius:10px;"></div>
+    <div id="chart" style="height:500px;"></div>
 
-    <!-- Signals -->
     <div style="margin-top:30px;">
         <h3>Live Entry Signals</h3>
 
@@ -25,14 +22,14 @@
 
 </div>
 
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
 
-    const chartContainer = document.getElementById("chart");
+    const container = document.getElementById("chart");
 
-    if (!chartContainer) {
+    if (!container) {
         console.error("Chart container missing");
         return;
     }
@@ -40,40 +37,25 @@ document.addEventListener("DOMContentLoaded", function () {
     // =====================
     // CREATE CHART
     // =====================
-    const chart = LightweightCharts.createChart(chartContainer, {
-        width: chartContainer.clientWidth,
+    const chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
         height: 500,
-
         layout: {
-            background: { color: "#0e0e0e" },
+            background: { color: "#000" },
             textColor: "#DDD"
         },
-
         grid: {
             vertLines: { color: "#1a1a1a" },
             horzLines: { color: "#1a1a1a" }
-        },
-
-        timeScale: {
-            timeVisible: true,
-            secondsVisible: false
-        },
-
-        rightPriceScale: {
-            borderColor: "#444"
         }
     });
 
     const candleSeries = chart.addCandlestickSeries();
 
-    // =====================
-    // RESPONSIVE
-    // =====================
-    window.addEventListener("resize", () => {
-        chart.applyOptions({
-            width: chartContainer.clientWidth
-        });
-    });
+    // ✅ ONLY DECLARE (no duplicate)
+    let entryLine = null;
+    let slLine = null;
+    let tpLine = null;
 
     // =====================
     // LOAD CHART DATA
@@ -81,115 +63,124 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadChartData() {
         try {
             const res = await fetch("/api/historical-data");
-            const data = await res.json();
 
-            if (!data || !data.dates || !data.open) {
-                console.error("Invalid data:", data);
+            if (!res.ok) {
+                console.error("Chart API failed");
                 return;
             }
 
-            const candles = data.dates.map((d, i) => {
-                const date = new Date(d);
+            const data = await res.json();
 
-                return {
-                    time: {
-                        year: date.getFullYear(),
-                        month: date.getMonth() + 1,
-                        day: date.getDate()
-                    },
-                    open: +data.open[i],
-                    high: +data.high[i],
-                    low: +data.low[i],
-                    close: +data.close[i]
-                };
-            });
+            if (!data || !data.dates) return;
+
+            const candles = data.dates.map((d, i) => ({
+                time: Math.floor(new Date(d).getTime() / 1000),
+                open: Number(data.open[i]),
+                high: Number(data.high[i]),
+                low: Number(data.low[i]),
+                close: Number(data.close[i])
+            }));
 
             candleSeries.setData(candles);
 
         } catch (err) {
-            console.error("Chart load error:", err);
+            console.error("Chart error:", err);
         }
     }
 
     // =====================
-    // LOAD SIGNALS
+    // LOAD SIGNALS (MAIN PART)
     // =====================
     async function loadSignals() {
         try {
             const res = await fetch("/api/entry-signals");
+
+            if (!res.ok) {
+                console.error("Signal API failed");
+                return;
+            }
+
             const data = await res.json();
 
             const list = document.getElementById("signalsList");
             const noDataMsg = document.getElementById("noDataMsg");
 
-            if (!list || !noDataMsg) return;
-
             list.innerHTML = "";
 
             if (!Array.isArray(data) || data.length === 0) {
                 noDataMsg.style.display = "block";
-                candleSeries.setMarkers([]);
                 return;
             }
 
             noDataMsg.style.display = "none";
 
-            const markers = [];
+            const latest = data[0];
 
-            data.forEach(signal => {
+            // =====================
+            // UPDATE UI LIST
+            // =====================
+            const li = document.createElement("li");
 
-                // UI LIST
-                const li = document.createElement("li");
+            li.style.padding = "10px";
+            li.style.borderRadius = "6px";
+            li.style.fontWeight = "bold";
 
-                li.style.padding = "10px";
-                li.style.marginBottom = "8px";
-                li.style.borderRadius = "6px";
-                li.style.fontWeight = "bold";
+            if (latest.type === "BUY") {
+                li.style.backgroundColor = "#1e4620";
+                li.style.color = "#4CAF50";
+            } else {
+                li.style.backgroundColor = "#4a1c1c";
+                li.style.color = "#FF5252";
+            }
 
-                if (signal.type === "BUY") {
-                    li.style.background = "#1e4620";
-                    li.style.color = "#4CAF50";
-                } else {
-                    li.style.background = "#4a1c1c";
-                    li.style.color = "#FF5252";
-                }
+            li.innerText = `${latest.type} at ${latest.price} (SL: ${latest.sl}, TP: ${latest.tp})`;
+            list.appendChild(li);
 
-                li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
-                list.appendChild(li);
+            // =====================
+            // REMOVE OLD LINES
+            // =====================
+            if (entryLine) candleSeries.removePriceLine(entryLine);
+            if (slLine) candleSeries.removePriceLine(slLine);
+            if (tpLine) candleSeries.removePriceLine(tpLine);
 
-                // MARKER FIX (CRITICAL)
-                const date = new Date(signal.time);
-
-                markers.push({
-                    time: {
-                        year: date.getFullYear(),
-                        month: date.getMonth() + 1,
-                        day: date.getDate()
-                    },
-                    position: signal.type === "BUY" ? "belowBar" : "aboveBar",
-                    color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
-                    shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
-                    text: signal.type
-                });
+            // =====================
+            // DRAW NEW LINES
+            // =====================
+            entryLine = candleSeries.createPriceLine({
+                price: latest.price,
+                color: '#FFD700',
+                lineWidth: 2,
+                title: 'ENTRY'
             });
 
-            candleSeries.setMarkers(markers);
+            slLine = candleSeries.createPriceLine({
+                price: latest.sl,
+                color: '#FF0000',
+                lineWidth: 2,
+                lineStyle: 2,
+                title: 'SL'
+            });
 
-        } catch (err) {
-            console.error("Signal error:", err);
+            tpLine = candleSeries.createPriceLine({
+                price: latest.tp,
+                color: '#00FF00',
+                lineWidth: 2,
+                lineStyle: 2,
+                title: 'TP'
+            });
+
+        } catch (error) {
+            console.error("Signal error:", error);
         }
     }
 
     // =====================
     // INIT
     // =====================
-    async function init() {
-        await loadChartData();
-        await loadSignals();
-    }
+    await loadChartData();
+    await loadSignals();
 
-    init();
-
+    // refresh signals every 10 sec
     setInterval(loadSignals, 10000);
 
 });

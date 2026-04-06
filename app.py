@@ -225,24 +225,30 @@ def entry_signals():
         signals = []
 
         for i in range(len(data)):
+            price = float(close.iloc[i])
+
             if buy.iloc[i]:
                 signals.append({
                     "type": "BUY",
-                    "price": float(close.iloc[i]),
+                    "price": price,
+                    "sl": price - 15,   # 🔥 adjustable
+                    "tp": price + 30,   # 🔥 RR = 1:2
                     "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
                 })
 
             elif sell.iloc[i]:
                 signals.append({
                     "type": "SELL",
-                    "price": float(close.iloc[i]),
+                    "price": price,
+                    "sl": price + 15,
+                    "tp": price - 30,
                     "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
                 })
 
-        return jsonify(signals[-10:])
+        return jsonify(signals[-1:])  # 🔥 ONLY LATEST SIGNAL
 
     except Exception as e:
-        print("❌ Signal error:", e)
+        print("Signal error:", e)
         return jsonify([])
 
 # ================================
