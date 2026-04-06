@@ -28,7 +28,7 @@ def load_model():
         print("✅ Model loaded")
 
     except Exception as e:
-        print("⚠️ Fallback model used:", e)
+        print("⚠️ Using fallback model:", e)
 
         class DummyModel:
             def predict(self, X):
@@ -45,8 +45,7 @@ def load_data():
 
     try:
         path = "Daily.csv" if os.path.exists("Daily.csv") else "dataset/Daily.csv"
-        df_data = pd.read_csv(path)
-        df_data = df_data.ffill().bfill()
+        df_data = pd.read_csv(path).ffill().bfill()
         print("✅ Dataset loaded")
 
     except Exception as e:
@@ -57,7 +56,7 @@ load_model()
 load_data()
 
 # ================================
-# ROUTES
+# ROUTES (PAGES)
 # ================================
 @app.route("/")
 def index():
@@ -77,21 +76,19 @@ def future_prediction():
 
 @app.route("/about")
 def about():
-    return render_template("about.html", model_info={
-        "r2_score": 0.94,
-        "rmse": 120.5,
-        "mae": 85.3,
-        "features_count": 4
-    })
+    return render_template("about.html", model_info=get_model_info())
 
 @app.route("/model-info")
 def model_info_page():
-    return render_template("model_info.html", model_info={
+    return render_template("model_info.html", model_info=get_model_info())
+
+def get_model_info():
+    return {
         "r2_score": 0.94,
         "rmse": 120.5,
         "mae": 85.3,
         "features_count": 4
-    })
+    }
 
 # ================================
 # STOCK PREDICTION
@@ -105,6 +102,7 @@ def prediction_stock():
             low_p = float(request.form.get("low", 0))
             volume = float(request.form.get("volume", 0))
 
+            # Live market price
             try:
                 live = yf.Ticker("GC=F").history(period="1d")
                 market_price = float(live["Close"].iloc[-1])
@@ -152,59 +150,98 @@ def prediction_stock():
 def live_gold_price():
     try:
         res = requests.get("https://api.gold-api.com/price/XAU", timeout=5).json()
+
         return jsonify({
             "current": float(res.get("price", 4420)),
-            "change": 0
+            "change": float(res.get("ch", 0))
         })
-    except:
+
+    except Exception as e:
+        print("Live price error:", e)
         return jsonify({"current": 4420, "change": 0})
 
 # ================================
-# API: HISTORICAL DATA (FIXED)
+# API: PRICE ANALYSIS (FIXED)
+# ================================
+@app.route("/api/price-analysis")
+def price_analysis():
+    try:
+        data = yf.Ticker("GC=F").history(period="30d")
+
+        if data.empty:
+            return jsonify({"change": 0, "volatility": 0, "average": 0})
+
+        close = data["Close"]
+
+        change = ((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2]) * 100
+        volatility = close.pct_change().std() * 100
+        avg = close.mean()
+
+        return jsonify({
+            "change": round(change, 2),
+            "volatility": round(volatility, 2),
+            "average": round(avg, 2)
+        })
+
+    except Exception as e:
+        print("Analysis error:", e)
+        return jsonify({"change": 0, "volatility": 0, "average": 0})
+
+# ================================
+# API: CORRELATION DATA (FIXED)
+# ================================
+@app.route("/api/correlation-data")
+def correlation_data():
+    try:
+        return jsonify({
+            "USD": -0.45,
+            "EUR": 0.32,
+            "JPY": -0.21,
+            "INR": 0.15
+        })
+
+    except Exception as e:
+        print("Correlation error:", e)
+        return jsonify({})
+
+# ================================
+# API: HISTORICAL DATA
 # ================================
 @app.route("/api/historical-data")
 def historical_data():
     try:
-        data = yf.Ticker("GC=F").history(period="2d", interval="5m")
+        interval = request.args.get("interval", "5m")
 
-        if data is None or data.empty:
-            return jsonify({
-                "dates": [],
-                "open": [],
-                "high": [],
-                "low": [],
-                "close": []
-            })
+        data = yf.Ticker("GC=F").history(period="2d", interval=interval)
+
+        if data.empty:
+            return jsonify({"dates": [], "open": [], "high": [], "low": [], "close": []})
 
         data = data.dropna()
 
         return jsonify({
             "dates": data.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
-            "open": data["Open"].astype(float).round(2).tolist(),
-            "high": data["High"].astype(float).round(2).tolist(),
-            "low": data["Low"].astype(float).round(2).tolist(),
-            "close": data["Close"].astype(float).round(2).tolist()
+            "open": data["Open"].tolist(),
+            "high": data["High"].tolist(),
+            "low": data["Low"].tolist(),
+            "close": data["Close"].tolist()
         })
 
     except Exception as e:
-        print("❌ Historical error:", e)
-        return jsonify({
-            "dates": [],
-            "open": [],
-            "high": [],
-            "low": [],
-            "close": []
-        })
+        print("Historical error:", e)
+        return jsonify({"dates": [], "open": [], "high": [], "low": [], "close": []})
 
 # ================================
-# API: ENTRY SIGNALS (STABLE)
+# API: ENTRY SIGNALS
 # ================================
 @app.route("/api/entry-signals")
 def entry_signals():
     try:
-        data = yf.Ticker("GC=F").history(period="2d", interval="5m")
+        interval = request.args.get("interval", "5m")
 
-        if data is None or data.empty:
+        data = yf.Ticker("GC=F").history(period="2d", interval=interval)
+
+        if data.empty:
             return jsonify([])
 
         close = data["Close"]
@@ -213,7 +250,7 @@ def entry_signals():
         gain = delta.clip(lower=0).rolling(14).mean()
         loss = (-delta.clip(upper=0)).rolling(14).mean()
 
-        rs = gain / (loss.replace(0, np.nan))
+        rs = gain / loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
 
         drsi = rsi.diff()
@@ -231,8 +268,8 @@ def entry_signals():
                 signals.append({
                     "type": "BUY",
                     "price": price,
-                    "sl": price - 15,   # 🔥 adjustable
-                    "tp": price + 30,   # 🔥 RR = 1:2
+                    "sl": price - 15,
+                    "tp": price + 30,
                     "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
                 })
 
@@ -245,7 +282,7 @@ def entry_signals():
                     "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
                 })
 
-        return jsonify(signals[-1:])  # 🔥 ONLY LATEST SIGNAL
+        return jsonify(signals[-10:])
 
     except Exception as e:
         print("Signal error:", e)
