@@ -76,6 +76,9 @@ def index():
 def visualization():
     return render_template("visualization.html")
 
+@app.route("/entry-levels")
+def entry_levels():
+    return render_template("entry_levels.html")
 
 # ================================
 # STOCK PREDICTION
@@ -340,6 +343,53 @@ def predict_7days_input():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/api/entry-signals")
+def entry_signals():
+    try:
+        data = yf.Ticker("GC=F").history(period="2d", interval="5m")
+
+        close = data["Close"]
+
+        # RSI
+        delta = close.diff()
+        gain = delta.clip(lower=0).rolling(14).mean()
+        loss = (-delta).clip(lower=0).rolling(14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+
+        # Derivative (simple)
+        drsi = rsi.diff()
+
+        # Signal line
+        signal = drsi.ewm(span=2).mean()
+
+        # Signals
+        buy = (drsi > signal) & (drsi.shift(1) <= signal.shift(1))
+        sell = (drsi < signal) & (drsi.shift(1) >= signal.shift(1))
+
+        signals = []
+
+        for i in range(len(data)):
+            if buy.iloc[i]:
+                signals.append({
+                    "type": "BUY",
+                    "price": float(close.iloc[i]),
+                    "time": str(data.index[i])
+                })
+            elif sell.iloc[i]:
+                signals.append({
+                    "type": "SELL",
+                    "price": float(close.iloc[i]),
+                    "time": str(data.index[i])
+                })
+
+        return jsonify(signals[-10:])  # last 10 signals
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 # ================================
