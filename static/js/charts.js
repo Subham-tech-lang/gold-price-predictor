@@ -1,6 +1,7 @@
 console.log("charts.js loaded ✅");
 
 let priceChart = null;
+let fullData = [];
 
 // ==============================
 // START
@@ -60,7 +61,7 @@ function loadHistoricalData() {
 
             if (!data || !data.dates) return;
 
-            const candles = data.dates.map((d, i) => ({
+            fullData = data.dates.map((d, i) => ({
                 x: new Date(d).getTime(),
                 o: Number(data.open[i]),
                 h: Number(data.high[i]),
@@ -68,12 +69,21 @@ function loadHistoricalData() {
                 c: Number(data.close[i])
             }));
 
-            if (priceChart) {
-                priceChart.data.datasets[0].data = candles;
-                priceChart.update();
-            }
+            // Default load = full data
+            updateChart(fullData);
         })
         .catch(err => console.error("Historical error:", err));
+}
+
+// ==============================
+// UPDATE CHART (REUSABLE)
+// ==============================
+
+function updateChart(data) {
+    if (!priceChart) return;
+
+    priceChart.data.datasets[0].data = data;
+    priceChart.update();
 }
 
 // ==============================
@@ -101,3 +111,47 @@ function updateLive() {
         })
         .catch(err => console.error("Live error:", err));
 }
+
+// ==============================
+// TIMEFRAME FILTER
+// ==============================
+
+function filterData(range) {
+
+    if (!fullData.length) return [];
+
+    const now = fullData[fullData.length - 1].x;
+
+    let ms = 0;
+
+    switch (range) {
+        case "1D": ms = 24 * 60 * 60 * 1000; break;
+        case "5D": ms = 5 * 24 * 60 * 60 * 1000; break;
+        case "1M": ms = 30 * 24 * 60 * 60 * 1000; break;
+        case "3M": ms = 90 * 24 * 60 * 60 * 1000; break;
+        case "1Y": ms = 365 * 24 * 60 * 60 * 1000; break;
+    }
+
+    return fullData.filter(d => d.x >= (now - ms));
+}
+
+// ==============================
+// BUTTON EVENTS
+// ==============================
+
+document.addEventListener("click", (e) => {
+
+    if (!e.target.classList.contains("timeframe-btn")) return;
+
+    const range = e.target.dataset.range;
+
+    const filtered = filterData(range);
+
+    updateChart(filtered);
+
+    // OPTIONAL: highlight active button
+    document.querySelectorAll(".timeframe-btn").forEach(btn =>
+        btn.classList.remove("active")
+    );
+    e.target.classList.add("active");
+});

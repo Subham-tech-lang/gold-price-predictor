@@ -21,7 +21,15 @@
                 <h3 class="text-center mb-4">
                     Gold Price Chart
                 </h3>
+                <div class="d-flex justify-content-center mb-3">
 
+                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="1D">1D</button>
+                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="5D">5D</button>
+                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="1M">1M</button>
+                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="3M">3M</button>
+                    <button class="btn btn-outline-primary timeframe-btn" data-range="1Y">1Y</button>
+
+                </div>
                 <div style="height:500px;">
                     <canvas id="priceChart"></canvas>
                 </div>
