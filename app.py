@@ -208,28 +208,36 @@ def correlation_data():
 # API: HISTORICAL DATA
 # ================================
 @app.route("/api/historical-data")
-def historical_data():
+def get_historical_data():
     try:
-        interval = request.args.get("interval", "5m")
+        import yfinance as yf
 
-        data = yf.Ticker("GC=F").history(period="2d", interval=interval)
+        df = yf.download("GC=F", period="1y", interval="1h")
 
-        if data.empty:
-            return jsonify({"dates": [], "open": [], "high": [], "low": [], "close": []})
+        if df.empty:
+            return {"error": "No data"}
 
-        data = data.dropna()
+        df = df.dropna()
 
-        return jsonify({
-            "dates": data.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
-            "open": data["Open"].tolist(),
-            "high": data["High"].tolist(),
-            "low": data["Low"].tolist(),
-            "close": data["Close"].tolist()
-        })
+        # ✅ FORCE SERIES (VERY IMPORTANT)
+        open_prices = df["Open"].values.tolist()
+        high_prices = df["High"].values.tolist()
+        low_prices = df["Low"].values.tolist()
+        close_prices = df["Close"].values.tolist()
+
+        dates = [str(d) for d in df.index]
+
+        return {
+            "dates": dates,
+            "open": open_prices,
+            "high": high_prices,
+            "low": low_prices,
+            "close": close_prices
+        }
 
     except Exception as e:
-        print("Historical error:", e)
-        return jsonify({"dates": [], "open": [], "high": [], "low": [], "close": []})
+        print("ERROR:", e)
+        return {"error": str(e)}
 
 # ================================
 # API: ENTRY SIGNALS
