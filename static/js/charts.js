@@ -125,14 +125,18 @@ function filterData(range) {
     let ms = 0;
 
     switch (range) {
-        case "1D": ms = 24 * 60 * 60 * 1000; break;
+        case "1D": ms = 1 * 24 * 60 * 60 * 1000; break;
         case "5D": ms = 5 * 24 * 60 * 60 * 1000; break;
         case "1M": ms = 30 * 24 * 60 * 60 * 1000; break;
         case "3M": ms = 90 * 24 * 60 * 60 * 1000; break;
         case "1Y": ms = 365 * 24 * 60 * 60 * 1000; break;
     }
 
-    return fullData.filter(d => d.x >= (now - ms));
+    const filtered = fullData.filter(d => d.x >= (now - ms));
+
+    console.log("Range:", range, "Filtered:", filtered.length);
+
+    return filtered.length ? filtered : fullData;
 }
 
 // ==============================
