@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const candles = data.dates.map((d, i) => ({
-                time: Math.floor(new Date(d).getTime() / 1000),
+                time: d.split(" ")[0], // ✅ ONLY DATE (IMPORTANT)
                 open: Number(data.open[i]),
                 high: Number(data.high[i]),
                 low: Number(data.low[i]),
@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // MARKERS
                 markers.push({
-                    time: Math.floor(new Date(signal.time).getTime() / 1000),
+                    time: signal.time.split(" ")[0],
                     position: signal.type === "BUY" ? "belowBar" : "aboveBar",
                     color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
                     shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
