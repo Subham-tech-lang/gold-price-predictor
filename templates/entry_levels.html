@@ -25,20 +25,15 @@
 
 </div>
 
-<!-- Lightweight Charts -->
 <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 
 <script>
-
-// =====================
-// SAFE INIT
-// =====================
 document.addEventListener("DOMContentLoaded", function () {
 
-    const chartContainer = document.getElementById('chart');
+    const chartContainer = document.getElementById("chart");
 
     if (!chartContainer) {
-        console.error("Chart container not found");
+        console.error("Chart container missing");
         return;
     }
 
@@ -46,24 +41,35 @@ document.addEventListener("DOMContentLoaded", function () {
     // CREATE CHART
     // =====================
     const chart = LightweightCharts.createChart(chartContainer, {
-        layout: {
-            background: { color: '#0e0e0e' },
-            textColor: '#DDD'
-        },
-        grid: {
-            vertLines: { color: '#1a1a1a' },
-            horzLines: { color: '#1a1a1a' }
-        },
         width: chartContainer.clientWidth,
-        height: 500
+        height: 500,
+
+        layout: {
+            background: { color: "#0e0e0e" },
+            textColor: "#DDD"
+        },
+
+        grid: {
+            vertLines: { color: "#1a1a1a" },
+            horzLines: { color: "#1a1a1a" }
+        },
+
+        timeScale: {
+            timeVisible: true,
+            secondsVisible: false
+        },
+
+        rightPriceScale: {
+            borderColor: "#444"
+        }
     });
 
     const candleSeries = chart.addCandlestickSeries();
 
     // =====================
-    // HANDLE RESIZE
+    // RESPONSIVE
     // =====================
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
         chart.applyOptions({
             width: chartContainer.clientWidth
         });
@@ -77,29 +83,36 @@ document.addEventListener("DOMContentLoaded", function () {
             const res = await fetch("/api/historical-data");
             const data = await res.json();
 
-            // 🔒 strict validation
-            if (!data || !data.dates || !data.open || !data.high || !data.low || !data.close) {
-                console.error("Invalid chart data:", data);
+            if (!data || !data.dates || !data.open) {
+                console.error("Invalid data:", data);
                 return;
             }
 
-            const candles = data.dates.map((d, i) => ({
-                time: d.split(" ")[0], // ✅ ONLY DATE (IMPORTANT)
-                open: Number(data.open[i]),
-                high: Number(data.high[i]),
-                low: Number(data.low[i]),
-                close: Number(data.close[i])
-            }));
+            const candles = data.dates.map((d, i) => {
+                const date = new Date(d);
+
+                return {
+                    time: {
+                        year: date.getFullYear(),
+                        month: date.getMonth() + 1,
+                        day: date.getDate()
+                    },
+                    open: +data.open[i],
+                    high: +data.high[i],
+                    low: +data.low[i],
+                    close: +data.close[i]
+                };
+            });
 
             candleSeries.setData(candles);
 
-        } catch (e) {
-            console.error("Chart error:", e);
+        } catch (err) {
+            console.error("Chart load error:", err);
         }
     }
 
     // =====================
-    // LOAD SIGNALS + MARKERS
+    // LOAD SIGNALS
     // =====================
     async function loadSignals() {
         try {
@@ -125,6 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             data.forEach(signal => {
 
+                // UI LIST
                 const li = document.createElement("li");
 
                 li.style.padding = "10px";
@@ -133,19 +147,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 li.style.fontWeight = "bold";
 
                 if (signal.type === "BUY") {
-                    li.style.backgroundColor = "#1e4620";
+                    li.style.background = "#1e4620";
                     li.style.color = "#4CAF50";
                 } else {
-                    li.style.backgroundColor = "#4a1c1c";
+                    li.style.background = "#4a1c1c";
                     li.style.color = "#FF5252";
                 }
 
                 li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
                 list.appendChild(li);
 
-                // MARKERS
+                // MARKER FIX (CRITICAL)
+                const date = new Date(signal.time);
+
                 markers.push({
-                    time: signal.time.split(" ")[0],
+                    time: {
+                        year: date.getFullYear(),
+                        month: date.getMonth() + 1,
+                        day: date.getDate()
+                    },
                     position: signal.type === "BUY" ? "belowBar" : "aboveBar",
                     color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
                     shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
@@ -155,8 +175,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             candleSeries.setMarkers(markers);
 
-        } catch (error) {
-            console.error("Signal error:", error);
+        } catch (err) {
+            console.error("Signal error:", err);
         }
     }
 
@@ -170,11 +190,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     init();
 
-    // refresh signals
     setInterval(loadSignals, 10000);
 
 });
-
 </script>
 
 {% endblock %}
