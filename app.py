@@ -184,16 +184,15 @@ def live_gold_price():
 @app.route("/api/historical-data")
 def historical_data():
     try:
-        data = yf.Ticker("GC=F").history(period="3mo", interval="1d")
+        data = yf.Ticker("GC=F").history(period="2d", interval="5m")
 
         if data is None or data.empty:
             return jsonify({})
 
         data = data.dropna()
-        data = data[data.index.dayofweek < 5].tail(60)
 
         return jsonify({
-            "dates": data.index.strftime("%Y-%m-%d").tolist(),
+            "dates": data.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
             "open": data["Open"].round(2).tolist(),
             "high": data["High"].round(2).tolist(),
             "low": data["Low"].round(2).tolist(),
@@ -203,7 +202,6 @@ def historical_data():
     except Exception as e:
         print("Historical error:", e)
         return jsonify({})
-
 
 @app.route("/api/price-analysis")
 def price_analysis():
@@ -307,14 +305,14 @@ def entry_signals():
                 signals.append({
                     "type": "BUY",
                     "price": float(close.iloc[i]),
-                    "time": data.index[i].strftime("%Y-%m-%d")  # ✅ FIXED FORMAT
+                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")  # ✅ FIXED FORMAT
                 })
 
             elif sell_signals.iloc[i]:
                 signals.append({
                     "type": "SELL",
                     "price": float(close.iloc[i]),
-                    "time": data.index[i].strftime("%Y-%m-%d")  # ✅ FIXED FORMAT
+                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")  # ✅ FIXED FORMAT
                 })
 
         # Return only latest 10 signals

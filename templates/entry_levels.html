@@ -9,10 +9,10 @@
         Entry Levels (Live Signals)
     </h2>
 
-    <!-- Chart Container -->
+    <!-- Chart -->
     <div id="chart" style="height:500px; border-radius:10px;"></div>
 
-    <!-- Signals List -->
+    <!-- Signals -->
     <div style="margin-top:30px;">
         <h3>Live Entry Signals</h3>
 
@@ -33,7 +33,9 @@
 // =====================
 // CREATE CHART
 // =====================
-const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+const chartContainer = document.getElementById('chart');
+
+const chart = LightweightCharts.createChart(chartContainer, {
     layout: {
         background: { color: '#0e0e0e' },
         textColor: '#DDD'
@@ -42,14 +44,23 @@ const chart = LightweightCharts.createChart(document.getElementById('chart'), {
         vertLines: { color: '#1a1a1a' },
         horzLines: { color: '#1a1a1a' }
     },
-    width: document.getElementById('chart').clientWidth,
+    width: chartContainer.clientWidth,
     height: 500
 });
 
 const candleSeries = chart.addCandlestickSeries();
 
 // =====================
-// LOAD CANDLE DATA
+// HANDLE RESIZE
+// =====================
+window.addEventListener('resize', () => {
+    chart.applyOptions({
+        width: chartContainer.clientWidth
+    });
+});
+
+// =====================
+// LOAD CHART DATA
 // =====================
 async function loadChartData() {
     try {
@@ -59,7 +70,7 @@ async function loadChartData() {
         if (!data || !data.dates) return;
 
         const candles = data.dates.map((d, i) => ({
-            time: d,
+            time: Math.floor(new Date(d).getTime() / 1000),  // ✅ FIXED
             open: data.open[i],
             high: data.high[i],
             low: data.low[i],
@@ -98,7 +109,7 @@ async function loadSignals() {
 
         data.forEach(signal => {
 
-            // ===== LIST UI =====
+            // ===== SIGNAL LIST =====
             const li = document.createElement("li");
 
             li.style.padding = "10px";
@@ -111,7 +122,7 @@ async function loadSignals() {
                 li.style.color = "#4CAF50";
             } else {
                 li.style.backgroundColor = "#4a1c1c";
-                li.style.color = "#ff4d4d";
+                li.style.color = "#FF5252";
             }
 
             li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
@@ -119,7 +130,7 @@ async function loadSignals() {
 
             // ===== CHART MARKERS =====
             markers.push({
-                time: signal.time,
+                time: Math.floor(new Date(signal.time).getTime() / 1000), // ✅ FIXED
                 position: signal.type === "BUY" ? "belowBar" : "aboveBar",
                 color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
                 shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
@@ -144,7 +155,7 @@ async function init() {
 
 init();
 
-// refresh signals every 10 sec
+// Refresh signals every 10 sec
 setInterval(loadSignals, 10000);
 
 </script>
