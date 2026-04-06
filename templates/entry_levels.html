@@ -31,132 +31,149 @@
 <script>
 
 // =====================
-// CREATE CHART
+// SAFE INIT
 // =====================
-const chartContainer = document.getElementById('chart');
+document.addEventListener("DOMContentLoaded", function () {
 
-const chart = LightweightCharts.createChart(chartContainer, {
-    layout: {
-        background: { color: '#0e0e0e' },
-        textColor: '#DDD'
-    },
-    grid: {
-        vertLines: { color: '#1a1a1a' },
-        horzLines: { color: '#1a1a1a' }
-    },
-    width: chartContainer.clientWidth,
-    height: 500
-});
+    const chartContainer = document.getElementById('chart');
 
-const candleSeries = chart.addCandlestickSeries();
-
-// =====================
-// HANDLE RESIZE
-// =====================
-window.addEventListener('resize', () => {
-    chart.applyOptions({
-        width: chartContainer.clientWidth
-    });
-});
-
-// =====================
-// LOAD CHART DATA
-// =====================
-async function loadChartData() {
-    try {
-        const res = await fetch("/api/historical-data");
-        const data = await res.json();
-
-        if (!data || !data.dates) return;
-
-        const candles = data.dates.map((d, i) => ({
-            time: Math.floor(new Date(d).getTime() / 1000),  // ✅ FIXED
-            open: data.open[i],
-            high: data.high[i],
-            low: data.low[i],
-            close: data.close[i]
-        }));
-
-        candleSeries.setData(candles);
-
-    } catch (e) {
-        console.error("Chart error:", e);
+    if (!chartContainer) {
+        console.error("Chart container not found");
+        return;
     }
-}
 
-// =====================
-// LOAD SIGNALS + MARKERS
-// =====================
-async function loadSignals() {
-    try {
-        const res = await fetch("/api/entry-signals");
-        const data = await res.json();
+    // =====================
+    // CREATE CHART
+    // =====================
+    const chart = LightweightCharts.createChart(chartContainer, {
+        layout: {
+            background: { color: '#0e0e0e' },
+            textColor: '#DDD'
+        },
+        grid: {
+            vertLines: { color: '#1a1a1a' },
+            horzLines: { color: '#1a1a1a' }
+        },
+        width: chartContainer.clientWidth,
+        height: 500
+    });
 
-        const list = document.getElementById("signalsList");
-        const noDataMsg = document.getElementById("noDataMsg");
+    const candleSeries = chart.addCandlestickSeries();
 
-        list.innerHTML = "";
+    // =====================
+    // HANDLE RESIZE
+    // =====================
+    window.addEventListener('resize', () => {
+        chart.applyOptions({
+            width: chartContainer.clientWidth
+        });
+    });
 
-        if (!Array.isArray(data) || data.length === 0) {
-            noDataMsg.style.display = "block";
-            candleSeries.setMarkers([]);
-            return;
-        }
+    // =====================
+    // LOAD CHART DATA
+    // =====================
+    async function loadChartData() {
+        try {
+            const res = await fetch("/api/historical-data");
+            const data = await res.json();
 
-        noDataMsg.style.display = "none";
-
-        const markers = [];
-
-        data.forEach(signal => {
-
-            // ===== SIGNAL LIST =====
-            const li = document.createElement("li");
-
-            li.style.padding = "10px";
-            li.style.marginBottom = "8px";
-            li.style.borderRadius = "6px";
-            li.style.fontWeight = "bold";
-
-            if (signal.type === "BUY") {
-                li.style.backgroundColor = "#1e4620";
-                li.style.color = "#4CAF50";
-            } else {
-                li.style.backgroundColor = "#4a1c1c";
-                li.style.color = "#FF5252";
+            // 🔒 strict validation
+            if (!data || !data.dates || !data.open || !data.high || !data.low || !data.close) {
+                console.error("Invalid chart data:", data);
+                return;
             }
 
-            li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
-            list.appendChild(li);
+            const candles = data.dates.map((d, i) => ({
+                time: Math.floor(new Date(d).getTime() / 1000),
+                open: Number(data.open[i]),
+                high: Number(data.high[i]),
+                low: Number(data.low[i]),
+                close: Number(data.close[i])
+            }));
 
-            // ===== CHART MARKERS =====
-            markers.push({
-                time: Math.floor(new Date(signal.time).getTime() / 1000), // ✅ FIXED
-                position: signal.type === "BUY" ? "belowBar" : "aboveBar",
-                color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
-                shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
-                text: signal.type
-            });
-        });
+            candleSeries.setData(candles);
 
-        candleSeries.setMarkers(markers);
-
-    } catch (error) {
-        console.error("Signal error:", error);
+        } catch (e) {
+            console.error("Chart error:", e);
+        }
     }
-}
 
-// =====================
-// INIT
-// =====================
-async function init() {
-    await loadChartData();
-    await loadSignals();
-}
+    // =====================
+    // LOAD SIGNALS + MARKERS
+    // =====================
+    async function loadSignals() {
+        try {
+            const res = await fetch("/api/entry-signals");
+            const data = await res.json();
 
-init();
+            const list = document.getElementById("signalsList");
+            const noDataMsg = document.getElementById("noDataMsg");
 
-// Refresh signals every 10 sec
-setInterval(loadSignals, 10000);
+            if (!list || !noDataMsg) return;
+
+            list.innerHTML = "";
+
+            if (!Array.isArray(data) || data.length === 0) {
+                noDataMsg.style.display = "block";
+                candleSeries.setMarkers([]);
+                return;
+            }
+
+            noDataMsg.style.display = "none";
+
+            const markers = [];
+
+            data.forEach(signal => {
+
+                const li = document.createElement("li");
+
+                li.style.padding = "10px";
+                li.style.marginBottom = "8px";
+                li.style.borderRadius = "6px";
+                li.style.fontWeight = "bold";
+
+                if (signal.type === "BUY") {
+                    li.style.backgroundColor = "#1e4620";
+                    li.style.color = "#4CAF50";
+                } else {
+                    li.style.backgroundColor = "#4a1c1c";
+                    li.style.color = "#FF5252";
+                }
+
+                li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
+                list.appendChild(li);
+
+                // MARKERS
+                markers.push({
+                    time: Math.floor(new Date(signal.time).getTime() / 1000),
+                    position: signal.type === "BUY" ? "belowBar" : "aboveBar",
+                    color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
+                    shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
+                    text: signal.type
+                });
+            });
+
+            candleSeries.setMarkers(markers);
+
+        } catch (error) {
+            console.error("Signal error:", error);
+        }
+    }
+
+    // =====================
+    // INIT
+    // =====================
+    async function init() {
+        await loadChartData();
+        await loadSignals();
+    }
+
+    init();
+
+    // refresh signals
+    setInterval(loadSignals, 10000);
+
+});
 
 </script>
 
