@@ -2,32 +2,46 @@
 
 {% block content %}
 
-<h2 style="text-align:center; margin-top:20px;">Entry Levels (Live Signals)</h2>
+<div style="padding: 20px;">
 
-<!-- TradingView Chart -->
-<div id="tv_chart" style="margin-top:20px;"></div>
+    <!-- Title -->
+    <h2 style="text-align:center; margin-bottom:20px;">
+        Entry Levels (Live Signals)
+    </h2>
 
-<script src="https://s3.tradingview.com/tv.js"></script>
+    <!-- TradingView Chart -->
+    <div id="tv_chart" style="border-radius:10px; overflow:hidden;"></div>
 
-<script>
-new TradingView.widget({
-  "width": "100%",
-  "height": 500,
-  "symbol": "OANDA:XAUUSD",
-  "interval": "5",
-  "timezone": "Asia/Kolkata",
-  "theme": "dark",
-  "style": "1",
-  "container_id": "tv_chart"
-});
-</script>
+    <!-- TradingView Script -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
 
-<!-- Signals Section -->
-<div style="margin-top:30px;">
-    <h3>Live Entry Signals</h3>
-    <ul id="signalsList"></ul>
+    <script>
+    new TradingView.widget({
+        width: "100%",
+        height: 500,
+        symbol: "OANDA:XAUUSD",
+        interval: "5",
+        timezone: "Asia/Kolkata",
+        theme: "dark",
+        style: "1",
+        container_id: "tv_chart"
+    });
+    </script>
+
+    <!-- Signals Section -->
+    <div style="margin-top:30px;">
+        <h3>Live Entry Signals</h3>
+
+        <ul id="signalsList" style="list-style:none; padding:0;"></ul>
+
+        <p id="noDataMsg" style="color:gray; display:none;">
+            No signals available
+        </p>
+    </div>
+
 </div>
 
+<!-- Script for fetching signals -->
 <script>
 async function loadSignals() {
     try {
@@ -35,20 +49,49 @@ async function loadSignals() {
         const data = await res.json();
 
         const list = document.getElementById("signalsList");
+        const noDataMsg = document.getElementById("noDataMsg");
+
         list.innerHTML = "";
 
-        data.forEach(s => {
+        // ✅ Safety check
+        if (!Array.isArray(data) || data.length === 0) {
+            noDataMsg.style.display = "block";
+            return;
+        }
+
+        noDataMsg.style.display = "none";
+
+        data.forEach(signal => {
             const li = document.createElement("li");
-            li.innerText = `${s.type} at ${s.price} (${s.time})`;
+
+            // Styling for BUY/SELL
+            li.style.padding = "10px";
+            li.style.marginBottom = "8px";
+            li.style.borderRadius = "6px";
+            li.style.fontWeight = "bold";
+
+            if (signal.type === "BUY") {
+                li.style.backgroundColor = "#1e4620";
+                li.style.color = "#4CAF50";
+            } else {
+                li.style.backgroundColor = "#4a1c1c";
+                li.style.color = "#ff4d4d";
+            }
+
+            li.innerText = `${signal.type} at ${signal.price} (${signal.time})`;
+
             list.appendChild(li);
         });
 
-    } catch (e) {
-        console.error(e);
+    } catch (error) {
+        console.error("Signal fetch error:", error);
     }
 }
 
+// Initial load
 loadSignals();
+
+// Refresh every 5 seconds
 setInterval(loadSignals, 5000);
 </script>
 
