@@ -187,19 +187,22 @@ def historical_data():
         data = yf.Ticker("GC=F").history(period="3mo", interval="1d")
 
         if data is None or data.empty:
-            return jsonify([])
+            return jsonify({})
 
         data = data.dropna()
         data = data[data.index.dayofweek < 5].tail(60)
 
         return jsonify({
             "dates": data.index.strftime("%Y-%m-%d").tolist(),
+            "open": data["Open"].round(2).tolist(),
+            "high": data["High"].round(2).tolist(),
+            "low": data["Low"].round(2).tolist(),
             "close": data["Close"].round(2).tolist()
         })
 
     except Exception as e:
         print("Historical error:", e)
-        return jsonify([])
+        return jsonify({})
 
 
 @app.route("/api/price-analysis")
@@ -261,37 +264,65 @@ def predict_7days_input():
 @app.route("/api/entry-signals")
 def entry_signals():
     try:
+        # Fetch recent gold data (5-minute candles)
         data = yf.Ticker("GC=F").history(period="2d", interval="5m")
 
+        # Safety check
         if data is None or data.empty:
             return jsonify([])
 
         close = data["Close"]
 
+        # =========================
+        # RSI CALCULATION
+        # =========================
         delta = close.diff()
-        gain = delta.clip(lower=0).rolling(14).mean()
-        loss = (-delta).clip(lower=0).rolling(14).mean()
-        rsi = 100 - (100 / (1 + (gain / loss)))
 
+        gain = delta.clip(lower=0).rolling(window=14).mean()
+        loss = (-delta.clip(upper=0)).rolling(window=14).mean()
+
+        rs = gain / (loss.replace(0, np.nan))  # avoid division by zero
+        rsi = 100 - (100 / (1 + rs))
+
+        # =========================
+        # D-RSI + SIGNAL LINE
+        # =========================
         drsi = rsi.diff()
-        signal = drsi.ewm(span=2).mean()
+        signal_line = drsi.ewm(span=2).mean()
 
-        buy = (drsi > signal) & (drsi.shift(1) <= signal.shift(1))
-        sell = (drsi < signal) & (drsi.shift(1) >= signal.shift(1))
+        # =========================
+        # BUY / SELL CONDITIONS
+        # =========================
+        buy_signals = (drsi > signal_line) & (drsi.shift(1) <= signal_line.shift(1))
+        sell_signals = (drsi < signal_line) & (drsi.shift(1) >= signal_line.shift(1))
 
         signals = []
 
+        # =========================
+        # BUILD SIGNAL LIST
+        # =========================
         for i in range(len(data)):
-            if buy.iloc[i]:
-                signals.append({"type": "BUY", "price": float(close.iloc[i]), "time": str(data.index[i])})
-            elif sell.iloc[i]:
-                signals.append({"type": "SELL", "price": float(close.iloc[i]), "time": str(data.index[i])})
 
+            if buy_signals.iloc[i]:
+                signals.append({
+                    "type": "BUY",
+                    "price": float(close.iloc[i]),
+                    "time": data.index[i].strftime("%Y-%m-%d")  # ✅ FIXED FORMAT
+                })
+
+            elif sell_signals.iloc[i]:
+                signals.append({
+                    "type": "SELL",
+                    "price": float(close.iloc[i]),
+                    "time": data.index[i].strftime("%Y-%m-%d")  # ✅ FIXED FORMAT
+                })
+
+        # Return only latest 10 signals
         return jsonify(signals[-10:])
 
     except Exception as e:
-        print("Signal error:", e)
-        return jsonify([])
+        print("❌ Entry signal error:", e)
+        return jsonify([])  # Always return list
 
 
 # ================================
