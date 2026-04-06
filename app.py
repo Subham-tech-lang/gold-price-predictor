@@ -278,6 +278,39 @@ def price_analysis():
         })
 
 
+
+@app.route("/api/predict", methods=["POST"])
+def api_predict():
+    try:
+        data = request.get_json()
+
+        open_p = float(data.get("open", 0))
+        high_p = float(data.get("high", 0))
+        low_p = float(data.get("low", 0))
+        volume = float(data.get("volume", 0))
+
+        df = pd.DataFrame([{
+            "open": open_p,
+            "high": high_p,
+            "low": low_p,
+            "volume": volume
+        }])
+
+        if feature_names:
+            for f in feature_names:
+                if f not in df.columns:
+                    df[f] = 4420
+            df = df[feature_names]
+
+        pred = float(model.predict(df)[0])
+
+        return jsonify({"prediction": round(pred, 2)})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 # ================================
 # 7 DAY PREDICTION
 # ================================
