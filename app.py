@@ -170,18 +170,18 @@ def about():
         "r2_score": 0.94,
         "rmse": 120.5,
         "mae": 85.3,
-        "features_count": len(feature_names) if feature_names else 4
+        "features_count": 4
     }
     return render_template("about.html", model_info=model_info_data)
 
 
 @app.route("/model-info")
-def model_info():
+def model_info_page():   # ⚠️ renamed function
     model_info_data = {
         "r2_score": 0.94,
         "rmse": 120.5,
         "mae": 85.3,
-        "features_count": len(feature_names) if feature_names else 4
+        "features_count": 4
     }
     return render_template("model_info.html", model_info=model_info_data)
 
