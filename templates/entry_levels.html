@@ -160,14 +160,16 @@ document.addEventListener("DOMContentLoaded", async function () {
             li.innerText = `${latest.type} at ${latest.price}`;
             list.appendChild(li);
 
-            // MARKERS
-            const markers = data.map(signal => ({
-                time: Math.floor(new Date(signal.time).getTime() / 1000),
-                position: signal.type === "BUY" ? "belowBar" : "aboveBar",
-                color: signal.type === "BUY" ? "#4CAF50" : "#FF5252",
-                shape: signal.type === "BUY" ? "arrowUp" : "arrowDown",
-                text: signal.type
-            }));
+            // ONLY LATEST SIGNAL (CLEAN)
+            const latestSignal = data[0];
+
+            const markers = [{
+                time: Math.floor(new Date(latestSignal.time).getTime() / 1000),
+                position: latestSignal.type === "BUY" ? "belowBar" : "aboveBar",
+                color: latestSignal.type === "BUY" ? "#4CAF50" : "#FF5252",
+                shape: latestSignal.type === "BUY" ? "arrowUp" : "arrowDown",
+                text: latestSignal.type
+            }];
 
             candleSeries.setMarkers(markers);
 
