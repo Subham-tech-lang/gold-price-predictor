@@ -56,7 +56,7 @@ load_model()
 load_data()
 
 # ================================
-# ROUTES (PAGES)
+# PAGES
 # ================================
 @app.route("/")
 def index():
@@ -87,11 +87,11 @@ def get_model_info():
         "r2_score": 0.94,
         "rmse": 120.5,
         "mae": 85.3,
-        "features_count": 4
+        "features_count": len(feature_names)
     }
 
 # ================================
-# STOCK PREDICTION
+# STOCK PREDICTION (FORM)
 # ================================
 @app.route("/prediction-stock", methods=["GET", "POST"])
 def prediction_stock():
@@ -161,83 +161,29 @@ def live_gold_price():
         return jsonify({"current": 4420, "change": 0})
 
 # ================================
-# API: PRICE ANALYSIS (FIXED)
-# ================================
-@app.route("/api/price-analysis")
-def price_analysis():
-    try:
-        data = yf.Ticker("GC=F").history(period="30d")
-
-        if data.empty:
-            return jsonify({"change": 0, "volatility": 0, "average": 0})
-
-        close = data["Close"]
-
-        change = ((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2]) * 100
-        volatility = close.pct_change().std() * 100
-        avg = close.mean()
-
-        return jsonify({
-            "change": round(change, 2),
-            "volatility": round(volatility, 2),
-            "average": round(avg, 2)
-        })
-
-    except Exception as e:
-        print("Analysis error:", e)
-        return jsonify({"change": 0, "volatility": 0, "average": 0})
-
-# ================================
-# API: CORRELATION DATA (FIXED)
-# ================================
-@app.route("/api/correlation-data")
-def correlation_data():
-    try:
-        return jsonify({
-            "USD": -0.45,
-            "EUR": 0.32,
-            "JPY": -0.21,
-            "INR": 0.15
-        })
-
-    except Exception as e:
-        print("Correlation error:", e)
-        return jsonify({})
-
-# ================================
 # API: HISTORICAL DATA
 # ================================
 @app.route("/api/historical-data")
 def get_historical_data():
     try:
-        import yfinance as yf
-
         df = yf.download("GC=F", period="1y", interval="1h")
 
         if df.empty:
-            return {"error": "No data"}
+            return jsonify({"error": "No data"})
 
         df = df.dropna()
 
-        # ✅ FORCE SERIES (VERY IMPORTANT)
-        open_prices = df["Open"].values.tolist()
-        high_prices = df["High"].values.tolist()
-        low_prices = df["Low"].values.tolist()
-        close_prices = df["Close"].values.tolist()
-
-        dates = [str(d) for d in df.index]
-
-        return {
-            "dates": dates,
-            "open": open_prices,
-            "high": high_prices,
-            "low": low_prices,
-            "close": close_prices
-        }
+        return jsonify({
+            "dates": [str(d) for d in df.index],
+            "open": df["Open"].tolist(),
+            "high": df["High"].tolist(),
+            "low": df["Low"].tolist(),
+            "close": df["Close"].tolist()
+        })
 
     except Exception as e:
         print("ERROR:", e)
-        return {"error": str(e)}
+        return jsonify({"error": str(e)})
 
 # ================================
 # API: ENTRY SIGNALS
@@ -246,7 +192,6 @@ def get_historical_data():
 def entry_signals():
     try:
         interval = request.args.get("interval", "5m")
-
         data = yf.Ticker("GC=F").history(period="2d", interval=interval)
 
         if data.empty:
@@ -261,40 +206,66 @@ def entry_signals():
         rs = gain / loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
 
-        drsi = rsi.diff()
-        signal = drsi.ewm(span=2).mean()
-
-        buy = (drsi > signal) & (drsi.shift(1) <= signal.shift(1))
-        sell = (drsi < signal) & (drsi.shift(1) >= signal.shift(1))
-
         signals = []
-
-        for i in range(len(data)):
-            price = float(close.iloc[i])
-
-            if buy.iloc[i]:
-                signals.append({
-                    "type": "BUY",
-                    "price": price,
-                    "sl": price - 15,
-                    "tp": price + 30,
-                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
-                })
-
-            elif sell.iloc[i]:
-                signals.append({
-                    "type": "SELL",
-                    "price": price,
-                    "sl": price + 15,
-                    "tp": price - 30,
-                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
-                })
+        for i in range(len(close)):
+            if rsi.iloc[i] < 30:
+                signals.append({"type": "BUY", "price": float(close.iloc[i])})
+            elif rsi.iloc[i] > 70:
+                signals.append({"type": "SELL", "price": float(close.iloc[i])})
 
         return jsonify(signals[-10:])
 
     except Exception as e:
         print("Signal error:", e)
         return jsonify([])
+
+# ================================
+# ✅ FIXED: 7-DAY PREDICTION API
+# ================================
+@app.route("/api/predict-7days-input", methods=["POST"])
+def predict_7days_input():
+    try:
+        data = request.get_json()
+        inputs = data.get("inputs", [])
+
+        if not inputs:
+            return jsonify({"success": False, "error": "No input"}), 400
+
+        current_price = float(inputs[-1])
+        predictions = []
+
+        for _ in range(7):
+            df = pd.DataFrame([{
+                "open": current_price,
+                "high": current_price,
+                "low": current_price,
+                "volume": 1000
+            }])
+
+            for f in feature_names:
+                if f not in df.columns:
+                    df[f] = current_price
+
+            df = df[feature_names]
+
+            try:
+                model_pred = float(model.predict(df)[0])
+            except:
+                model_pred = current_price
+
+            next_price = round((0.9 * current_price) + (0.1 * model_pred), 2)
+
+            predictions.append(next_price)
+            current_price = next_price
+
+        return jsonify({
+            "success": True,
+            "predictions": predictions
+        })
+
+    except Exception as e:
+        print("7-day error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ================================
 # RUN
