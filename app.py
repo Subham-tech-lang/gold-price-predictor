@@ -226,12 +226,17 @@ def entry_signals():
 def predict_7days_input():
     try:
         data = request.get_json()
-        inputs = data.get("inputs", [])
 
-        if not inputs:
-            return jsonify({"success": False, "error": "No input"}), 400
+        if not data:
+            return jsonify({"success": False, "error": "No data"}), 400
 
-        current_price = float(inputs[-1])
+        # ✅ Accept BOTH formats
+        if "inputs" in data:
+            current_price = float(data["inputs"][-1])
+        elif "price" in data:
+            current_price = float(data["price"])
+        else:
+            return jsonify({"success": False, "error": "Missing price"}), 400
         predictions = []
 
         for _ in range(7):
