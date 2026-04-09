@@ -173,21 +173,23 @@ def get_historical_data():
 
         df = df.dropna()
 
-        # ✅ FORCE CLEAN DATAFRAME
+        # ✅ CRITICAL FIX
         df = df.reset_index()
 
+        # ✅ ENSURE CORRECT DATE COLUMN
+        date_col = "Datetime" if "Datetime" in df.columns else "Date"
+
         return jsonify({
-            "dates": df["Datetime"].astype(str).tolist() if "Datetime" in df.columns else df["Date"].astype(str).tolist(),
-            "open": df["Open"].astype(float).tolist(),
-            "high": df["High"].astype(float).tolist(),
-            "low": df["Low"].astype(float).tolist(),
-            "close": df["Close"].astype(float).tolist()
+            "dates": df[date_col].astype(str).values.tolist(),
+            "open": df["Open"].values.tolist(),
+            "high": df["High"].values.tolist(),
+            "low": df["Low"].values.tolist(),
+            "close": df["Close"].values.tolist()
         })
 
     except Exception as e:
         print("ERROR historical:", e)
         return jsonify({"error": str(e)})
-
 # ================================
 # API: ENTRY SIGNALS
 # ================================
