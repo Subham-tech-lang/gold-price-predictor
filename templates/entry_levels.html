@@ -258,6 +258,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.getElementById("timeframeSelect").addEventListener("change", function () {
         currentTimeframe = this.value;
         loadChartData();
+        loadSignals();
     });
 
     await loadChartData();

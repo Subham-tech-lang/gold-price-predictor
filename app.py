@@ -166,17 +166,26 @@ def live_gold_price():
 @app.route("/api/historical-data")
 def get_historical_data():
     try:
-        df = yf.download("GC=F", period="1y", interval="1h")
+        interval = request.args.get("interval", "5m")
+
+        # ✅ INTERVAL MAPPING
+        interval_map = {
+            "1m": ("1d", "1m"),
+            "5m": ("2d", "5m"),
+            "15m": ("5d", "15m"),
+            "30m": ("5d", "30m"),
+            "1h": ("7d", "60m")
+        }
+
+        period, yf_interval = interval_map.get(interval, ("2d", "5m"))
+
+        df = yf.download("GC=F", period=period, interval=yf_interval)
 
         if df.empty:
             return jsonify({"error": "No data"})
 
-        df = df.dropna()
+        df = df.dropna().reset_index()
 
-        # ✅ CRITICAL FIX
-        df = df.reset_index()
-
-        # ✅ ENSURE CORRECT DATE COLUMN
         date_col = "Datetime" if "Datetime" in df.columns else "Date"
 
         return jsonify({
@@ -190,6 +199,8 @@ def get_historical_data():
     except Exception as e:
         print("ERROR historical:", e)
         return jsonify({"error": str(e)})
+    
+
 # ================================
 # API: ENTRY SIGNALS
 # ================================
@@ -197,33 +208,80 @@ def get_historical_data():
 def entry_signals():
     try:
         interval = request.args.get("interval", "5m")
-        data = yf.Ticker("GC=F").history(period="2d", interval=interval)
+
+        # ✅ SAME MAPPING (VERY IMPORTANT)
+        interval_map = {
+            "1m": ("1d", "1m"),
+            "5m": ("2d", "5m"),
+            "15m": ("5d", "15m"),
+            "30m": ("5d", "30m"),
+            "1h": ("7d", "60m")
+        }
+
+        period, yf_interval = interval_map.get(interval, ("2d", "5m"))
+
+        data = yf.Ticker("GC=F").history(period=period, interval=yf_interval)
 
         if data.empty:
             return jsonify([])
 
-        close = data["Close"]
+        data.dropna(inplace=True)
 
+        close = data["Close"]
+        high = data["High"]
+        low = data["Low"]
+
+        # =====================
+        # RSI CALCULATION
+        # =====================
         delta = close.diff()
+
         gain = delta.clip(lower=0).rolling(14).mean()
         loss = (-delta.clip(upper=0)).rolling(14).mean()
 
         rs = gain / loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
 
+        # =====================
+        # ATR CALCULATION
+        # =====================
+        tr1 = high - low
+        tr2 = (high - close.shift()).abs()
+        tr3 = (low - close.shift()).abs()
+
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr = tr.rolling(14).mean()
+
         signals = []
 
+        # =====================
+        # SIGNAL GENERATION
+        # =====================
         for i in range(len(close)):
-            price = float(close.iloc[i])
 
-            if pd.isna(rsi.iloc[i]):
+            # Skip early rows (insufficient data)
+            if i < 20:
                 continue
 
+            price = float(close.iloc[i])
+            time = data.index[i]
+
+            rsi_val = rsi.iloc[i]
+            atr_val = atr.iloc[i]
+
+            if pd.isna(rsi_val) or pd.isna(atr_val):
+                continue
+
+            # =====================
             # BUY SIGNAL
-            if rsi.iloc[i] < 30:
-                sl = round(price - 15, 2)
-                tp = round(price + 30, 2)
-                rr = round((tp - price) / (price - sl), 2)
+            # =====================
+            if rsi_val < 30:
+                sl = round(price - (atr_val * 1.5), 2)
+                tp = round(price + (atr_val * 2), 2)
+
+                risk = price - sl
+                reward = tp - price
+                rr = round(reward / risk, 2) if risk > 0 else None
 
                 signals.append({
                     "type": "BUY",
@@ -231,14 +289,19 @@ def entry_signals():
                     "sl": sl,
                     "tp": tp,
                     "rr": rr,
-                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S")
                 })
 
+            # =====================
             # SELL SIGNAL
-            elif rsi.iloc[i] > 70:
-                sl = round(price + 15, 2)
-                tp = round(price - 30, 2)
-                rr = round((price - tp) / (sl - price), 2)
+            # =====================
+            elif rsi_val > 70:
+                sl = round(price + (atr_val * 1.5), 2)
+                tp = round(price - (atr_val * 2), 2)
+
+                risk = sl - price
+                reward = price - tp
+                rr = round(reward / risk, 2) if risk > 0 else None
 
                 signals.append({
                     "type": "SELL",
@@ -246,9 +309,10 @@ def entry_signals():
                     "sl": sl,
                     "tp": tp,
                     "rr": rr,
-                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S")
                 })
 
+        # Return last 10 signals
         return jsonify(signals[-10:])
 
     except Exception as e:
