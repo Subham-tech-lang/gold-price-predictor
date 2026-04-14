@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             // =====================
             if (latest.time) {
                 candleSeries.setMarkers([{
-                    time: Math.floor(new Date(latest.time).getTime() / 1000),
+                    time: latest.time,
                     position: latest.type === "BUY" ? "belowBar" : "aboveBar",
                     color: latest.type === "BUY" ? "#4CAF50" : "#FF5252",
                     shape: latest.type === "BUY" ? "arrowUp" : "arrowDown",
