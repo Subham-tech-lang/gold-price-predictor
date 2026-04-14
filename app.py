@@ -212,11 +212,42 @@ def entry_signals():
         rsi = 100 - (100 / (1 + rs))
 
         signals = []
+
         for i in range(len(close)):
+            price = float(close.iloc[i])
+
+            if pd.isna(rsi.iloc[i]):
+                continue
+
+            # BUY SIGNAL
             if rsi.iloc[i] < 30:
-                signals.append({"type": "BUY", "price": float(close.iloc[i])})
+                sl = round(price - 15, 2)
+                tp = round(price + 30, 2)
+                rr = round((tp - price) / (price - sl), 2)
+
+                signals.append({
+                    "type": "BUY",
+                    "price": price,
+                    "sl": sl,
+                    "tp": tp,
+                    "rr": rr,
+                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
+                })
+
+            # SELL SIGNAL
             elif rsi.iloc[i] > 70:
-                signals.append({"type": "SELL", "price": float(close.iloc[i])})
+                sl = round(price + 15, 2)
+                tp = round(price - 30, 2)
+                rr = round((price - tp) / (sl - price), 2)
+
+                signals.append({
+                    "type": "SELL",
+                    "price": price,
+                    "sl": sl,
+                    "tp": tp,
+                    "rr": rr,
+                    "time": data.index[i].strftime("%Y-%m-%d %H:%M:%S")
+                })
 
         return jsonify(signals[-10:])
 

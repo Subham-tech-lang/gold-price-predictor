@@ -131,17 +131,20 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             noDataMsg.style.display = "none";
 
-            const latest = data[0];
+            const latest = data[data.length - 1];
 
             // TRADE PANEL
             document.getElementById("tradeType").textContent = latest.type;
             document.getElementById("tradeEntry").textContent = latest.price;
-            document.getElementById("tradeSL").textContent = latest.sl;
-            document.getElementById("tradeTP").textContent = latest.tp;
+            document.getElementById("tradeSL").textContent = latest.sl ?? "N/A";
+            document.getElementById("tradeTP").textContent = latest.tp ?? "N/A";
 
             const risk = Math.abs(latest.price - latest.sl);
             const reward = Math.abs(latest.tp - latest.price);
-            document.getElementById("tradeRR").textContent = (reward / risk).toFixed(2);
+
+            const rr = (risk > 0) ? (reward / risk).toFixed(2) : "N/A";
+
+            document.getElementById("tradeRR").textContent = rr;
 
             // SIGNAL LIST
             const li = document.createElement("li");
