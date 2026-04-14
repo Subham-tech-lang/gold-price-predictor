@@ -54,9 +54,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     let currentTimeframe = "5m";
 
-    // =====================
-    // CHART
-    // =====================
     const chart = LightweightCharts.createChart(container, {
         width: container.clientWidth,
         height: 500,
@@ -79,10 +76,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         chart.applyOptions({ width: container.clientWidth });
     });
 
-    // =====================
-    // GLOBAL ELEMENTS
-    // =====================
-    let entryLine, slLine, tpLine, rrTop, rrBottom;
+    let entryLine, slLine, tpLine;
 
     // =====================
     // LOAD CHART DATA
@@ -133,7 +127,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             const latest = data[data.length - 1];
 
+            // =====================
             // TRADE PANEL
+            // =====================
             document.getElementById("tradeType").textContent = latest.type;
             document.getElementById("tradeEntry").textContent = latest.price;
             document.getElementById("tradeSL").textContent = latest.sl ?? "N/A";
@@ -141,12 +137,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             const risk = Math.abs(latest.price - latest.sl);
             const reward = Math.abs(latest.tp - latest.price);
-
             const rr = (risk > 0) ? (reward / risk).toFixed(2) : "N/A";
 
             document.getElementById("tradeRR").textContent = rr;
 
+            // =====================
             // SIGNAL LIST
+            // =====================
             const li = document.createElement("li");
             li.style.padding = "10px";
             li.style.borderRadius = "6px";
@@ -163,27 +160,27 @@ document.addEventListener("DOMContentLoaded", async function () {
             li.innerText = `${latest.type} at ${latest.price}`;
             list.appendChild(li);
 
-            // ONLY LATEST SIGNAL (CLEAN)
-            const latestSignal = data[0];
+            // =====================
+            // MARKERS
+            // =====================
+            candleSeries.setMarkers([{
+                time: Math.floor(new Date(latest.time).getTime() / 1000),
+                position: latest.type === "BUY" ? "belowBar" : "aboveBar",
+                color: latest.type === "BUY" ? "#4CAF50" : "#FF5252",
+                shape: latest.type === "BUY" ? "arrowUp" : "arrowDown",
+                text: latest.type
+            }]);
 
-            const markers = [{
-                time: Math.floor(new Date(latestSignal.time).getTime() / 1000),
-                position: latestSignal.type === "BUY" ? "belowBar" : "aboveBar",
-                color: latestSignal.type === "BUY" ? "#4CAF50" : "#FF5252",
-                shape: latestSignal.type === "BUY" ? "arrowUp" : "arrowDown",
-                text: latestSignal.type
-            }];
-
-            candleSeries.setMarkers(markers);
-
-            // REMOVE OLD
+            // =====================
+            // REMOVE OLD LINES
+            // =====================
             if (entryLine) candleSeries.removePriceLine(entryLine);
             if (slLine) candleSeries.removePriceLine(slLine);
             if (tpLine) candleSeries.removePriceLine(tpLine);
-            if (rrTop) chart.removeSeries(rrTop);
-            if (rrBottom) chart.removeSeries(rrBottom);
 
-            // DRAW LINES
+            // =====================
+            // DRAW CLEAN LINES
+            // =====================
             entryLine = candleSeries.createPriceLine({
                 price: latest.price,
                 color: '#FFD700',
@@ -204,32 +201,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                 title: 'TP'
             });
 
-            // RR BOX
-            rrTop = chart.addAreaSeries({
-                topColor: 'rgba(0,255,0,0.2)',
-                bottomColor: 'rgba(0,255,0,0.2)',
-                lineColor: '#00FF00'
-            });
-
-            rrBottom = chart.addAreaSeries({
-                topColor: 'rgba(255,0,0,0.2)',
-                bottomColor: 'rgba(255,0,0,0.2)',
-                lineColor: '#FF0000'
-            });
-
-            const now = Math.floor(Date.now() / 1000);
-            const past = now - 1800;
-
-            rrTop.setData([
-                { time: past, value: latest.price },
-                { time: now, value: latest.tp }
-            ]);
-
-            rrBottom.setData([
-                { time: past, value: latest.price },
-                { time: now, value: latest.sl }
-            ]);
-
         } catch (e) {
             console.error("Signal error:", e);
         }
@@ -243,7 +214,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         loadChartData();
     });
 
-    // INIT
     await loadChartData();
     await loadSignals();
 
