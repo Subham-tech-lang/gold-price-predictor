@@ -21,6 +21,7 @@
         </select>
     </div>
 
+    <!-- CHART -->
     <div id="chart" style="height:500px;"></div>
 
     <!-- SIGNAL LIST -->
@@ -118,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             list.innerHTML = "";
 
-            if (!data.length) {
+            if (!data || data.length === 0) {
                 noDataMsg.style.display = "block";
                 return;
             }
@@ -131,13 +132,17 @@ document.addEventListener("DOMContentLoaded", async function () {
             // TRADE PANEL
             // =====================
             document.getElementById("tradeType").textContent = latest.type;
-            document.getElementById("tradeEntry").textContent = latest.price;
-            document.getElementById("tradeSL").textContent = latest.sl ?? "N/A";
-            document.getElementById("tradeTP").textContent = latest.tp ?? "N/A";
+            document.getElementById("tradeEntry").textContent = latest.price ?? "-";
+            document.getElementById("tradeSL").textContent = latest.sl ?? "-";
+            document.getElementById("tradeTP").textContent = latest.tp ?? "-";
 
-            const risk = Math.abs(latest.price - latest.sl);
-            const reward = Math.abs(latest.tp - latest.price);
-            const rr = (risk > 0) ? (reward / risk).toFixed(2) : "N/A";
+            // RR calculation safe
+            let rr = "-";
+            if (latest.sl && latest.tp) {
+                const risk = Math.abs(latest.price - latest.sl);
+                const reward = Math.abs(latest.tp - latest.price);
+                rr = risk > 0 ? (reward / risk).toFixed(2) : "-";
+            }
 
             document.getElementById("tradeRR").textContent = rr;
 
@@ -161,15 +166,17 @@ document.addEventListener("DOMContentLoaded", async function () {
             list.appendChild(li);
 
             // =====================
-            // MARKERS
+            // MARKER
             // =====================
-            candleSeries.setMarkers([{
-                time: Math.floor(new Date(latest.time).getTime() / 1000),
-                position: latest.type === "BUY" ? "belowBar" : "aboveBar",
-                color: latest.type === "BUY" ? "#4CAF50" : "#FF5252",
-                shape: latest.type === "BUY" ? "arrowUp" : "arrowDown",
-                text: latest.type
-            }]);
+            if (latest.time) {
+                candleSeries.setMarkers([{
+                    time: Math.floor(new Date(latest.time).getTime() / 1000),
+                    position: latest.type === "BUY" ? "belowBar" : "aboveBar",
+                    color: latest.type === "BUY" ? "#4CAF50" : "#FF5252",
+                    shape: latest.type === "BUY" ? "arrowUp" : "arrowDown",
+                    text: latest.type
+                }]);
+            }
 
             // =====================
             // REMOVE OLD LINES
@@ -179,27 +186,66 @@ document.addEventListener("DOMContentLoaded", async function () {
             if (tpLine) candleSeries.removePriceLine(tpLine);
 
             // =====================
-            // DRAW CLEAN LINES
+            // DRAW LINES
             // =====================
-            entryLine = candleSeries.createPriceLine({
-                price: latest.price,
-                color: '#FFD700',
-                title: 'ENTRY'
-            });
+            if (latest.price) {
+                entryLine = candleSeries.createPriceLine({
+                    price: latest.price,
+                    color: '#FFD700',
+                    title: 'ENTRY'
+                });
+            }
 
-            slLine = candleSeries.createPriceLine({
-                price: latest.sl,
-                color: '#FF0000',
-                lineStyle: 2,
-                title: 'SL'
-            });
+            if (latest.sl) {
+                slLine = candleSeries.createPriceLine({
+                    price: latest.sl,
+                    color: '#FF0000',
+                    lineStyle: 2,
+                    title: 'SL'
+                });
+            }
 
-            tpLine = candleSeries.createPriceLine({
-                price: latest.tp,
-                color: '#00FF00',
-                lineStyle: 2,
-                title: 'TP'
-            });
+            if (latest.tp) {
+                tpLine = candleSeries.createPriceLine({
+                    price: latest.tp,
+                    color: '#00FF00',
+                    lineStyle: 2,
+                    title: 'TP'
+                });
+            }
+
+            // =====================
+            // RISK-REWARD BOX
+            // =====================
+            if (window.rrProfit) chart.removeSeries(window.rrProfit);
+            if (window.rrLoss) chart.removeSeries(window.rrLoss);
+
+            if (latest.sl && latest.tp) {
+                window.rrProfit = chart.addAreaSeries({
+                    topColor: 'rgba(0,255,0,0.5)',
+                    bottomColor: 'rgba(0,255,0,0.1)',
+                    lineColor: 'rgba(0,255,0,0)'
+                });
+
+                window.rrLoss = chart.addAreaSeries({
+                    topColor: 'rgba(255,0,0,0.5)',
+                    bottomColor: 'rgba(255,0,0,0.1)',
+                    lineColor: 'rgba(255,0,0,0)'
+                });
+
+                const now = Math.floor(Date.now() / 1000);
+                const future = now + 3600;
+
+                window.rrProfit.setData([
+                    { time: now, value: latest.tp },
+                    { time: future, value: latest.tp }
+                ]);
+
+                window.rrLoss.setData([
+                    { time: now, value: latest.sl },
+                    { time: future, value: latest.sl }
+                ]);
+            }
 
         } catch (e) {
             console.error("Signal error:", e);
