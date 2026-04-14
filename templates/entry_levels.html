@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             const data = await res.json();
 
             const candles = data.dates.map((d, i) => ({
-                time: Math.floor(new Date(d).getTime() / 1000),
+                time: d,   // ✅ DIRECT USE (NO CONVERSION)
                 open: +data.open[i],
                 high: +data.high[i],
                 low: +data.low[i],

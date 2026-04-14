@@ -189,7 +189,7 @@ def get_historical_data():
         date_col = "Datetime" if "Datetime" in df.columns else "Date"
 
         return jsonify({
-            "dates": df[date_col].astype(str).values.tolist(),
+            "dates": [int(pd.Timestamp(x).timestamp()) for x in df[date_col]],
             "open": df["Open"].values.tolist(),
             "high": df["High"].values.tolist(),
             "low": df["Low"].values.tolist(),
