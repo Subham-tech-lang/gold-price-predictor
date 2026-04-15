@@ -20,29 +20,34 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==============================
 function initChart() {
 
-    const canvas = document.getElementById("priceChart");
-    if (!canvas) {
-        console.warn("Canvas element not found");
+    const canvasEl = document.getElementById("priceChart");
+
+    if (!canvasEl) {
+        console.warn("priceChart canvas not found");
         return;
     }
 
-    const context = canvas.getContext("2d");
+    const ctx = canvasEl.getContext("2d");
 
-    chartInstance = new Chart(context, {
+    chartInstance = new Chart(ctx, {
         type: "candlestick",
 
         data: {
-            datasets: [{
-                label: "Gold Price",
-                data: [],
-                parsing: false,
-                borderColor: "#999",
-                color: {
-                    up: "#26a69a",
-                    down: "#ef5350",
-                    unchanged: "#999"
+            datasets: [
+                {
+                    label: "Gold Price",
+                    data: [],
+                    parsing: false,
+
+                    borderColor: "#999",
+
+                    color: {
+                        up: "#26a69a",
+                        down: "#ef5350",
+                        unchanged: "#999"
+                    }
                 }
-            }]
+            ]
         },
 
         options: {
@@ -52,7 +57,13 @@ function initChart() {
 
             scales: {
                 x: {
-                    type: "category"   // ensures even spacing
+                    type: "time",
+                    time: {
+                        unit: "minute"
+                    },
+                    ticks: {
+                        maxRotation: 0
+                    }
                 },
                 y: {
                     beginAtZero: false
@@ -61,16 +72,20 @@ function initChart() {
 
             plugins: {
                 legend: {
-                    display: true
+                    display: true,
+                    position: "top"
                 },
 
                 tooltip: {
+                    intersect: false,
+                    mode: "index",
                     callbacks: {
-                        label: (ctx) => {
-                            const d = ctx.raw;
+                        label: (context) => {
+                            const d = context.raw;
+
+                            if (!d) return "";
 
                             return [
-                                `Time: ${formatTime(d.time)}`,
                                 `Open: ${d.o}`,
                                 `High: ${d.h}`,
                                 `Low: ${d.l}`,
@@ -83,7 +98,6 @@ function initChart() {
         }
     });
 }
-
 // ==============================
 // DATA FETCH
 // ==============================
@@ -122,16 +136,12 @@ function fetchAndRender(range) {
 // DATA TRANSFORM
 // ==============================
 function transformData(data) {
-
-    return data.map((item, index) => ({
-        x: index,   // evenly spaced candles
+    return data.map(item => ({
+        x: item.x * 1000,
         o: Number(item.o),
         h: Number(item.h),
         l: Number(item.l),
-        c: Number(item.c),
-
-        // preserve actual timestamp
-        time: new Date(item.x * 1000)
+        c: Number(item.c)
     }));
 }
 
