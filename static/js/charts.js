@@ -1,4 +1,6 @@
-// ✅ REQUIRED: register financial chart components
+// ==============================
+// REGISTER FINANCIAL COMPONENTS
+// ==============================
 Chart.register(
     Chart.controllers.candlestick,
     Chart.controllers.ohlc,
@@ -9,111 +11,76 @@ Chart.register(
     Chart.plugins.Legend,
     Chart.plugins.Tooltip
 );
-console.log("charts.js PRODUCTION READY ✅");
+
+console.log("charts.js FINAL WORKING ✅");
 
 // ==============================
-// GLOBAL STATE
-// ==============================
-let chartInstance = null;
-let activeRange = "5D";
+let chart = null;
+let currentRange = "5D";
 
-// ==============================
-// APP START
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-    initChart();
-    initTimeframeButtons();
-    loadChartData(activeRange);
+    createChart();
+    bindButtons();
+    fetchData(currentRange);
 });
 
 // ==============================
-// INITIALIZE CHART
-// ==============================
-function initChart() {
+function createChart() {
 
     const canvas = document.getElementById("priceChart");
-
-    if (!canvas) {
-        console.warn("priceChart canvas missing");
-        return;
-    }
+    if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
 
-    chartInstance = new Chart(ctx, {
+    chart = new Chart(ctx, {
         type: "candlestick",
-
         data: {
-            datasets: [
-                {
-                    label: "Gold Price",
-                    data: [],
-                    parsing: false,
-
-                    borderColor: "#000",
-                    borderWidth: 1,
-
-                    color: {
-                        up: "#00ff88",
-                        down: "#ff3b3b",
-                        unchanged: "#999"
-                    }
+            datasets: [{
+                label: "Gold Price",
+                data: [],
+                parsing: false,
+                color: {
+                    up: "#00ff88",
+                    down: "#ff3b3b",
+                    unchanged: "#999"
                 }
-            ]
+            }]
         },
-
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
 
-            // ==============================
-            // SCALES (STABLE)
-            // ==============================
             scales: {
                 x: {
                     type: "category"
                 },
                 y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: (value) => value.toFixed(2)
-                    }
+                    beginAtZero: false
                 }
             },
 
-            // ==============================
-            // CANDLE VISIBILITY FIX
-            // ==============================
             elements: {
                 candlestick: {
-                    barThickness: 8,
-                    borderWidth: 1
+                    barThickness: 10
                 }
             },
 
-            // ==============================
-            // PLUGINS
-            // ==============================
             plugins: {
-                legend: {
-                    display: true,
-                    position: "top"
-                },
-
+                legend: { display: true },
                 tooltip: {
                     callbacks: {
-                        label: function (ctx) {
+                        label: (ctx) => {
                             const d = ctx.raw;
-
                             if (!d) return "";
 
                             return [
-                                "Time: " + formatTime(d.time),
-                                "Open: " + d.o,
-                                "High: " + d.h,
-                                "Low: " + d.l,
-                                "Close: " + d.c
+                                `Time: ${formatTime(d.time)}`,
+                                `O: ${d.o}`,
+                                `H: ${d.h}`,
+                                `L: ${d.l}`,
+                                `C: ${d.c}`
                             ];
                         }
                     }
@@ -124,11 +91,9 @@ function initChart() {
 }
 
 // ==============================
-// FETCH DATA
-// ==============================
-function loadChartData(range) {
+function fetchData(range) {
 
-    const intervalMap = {
+    const map = {
         "1D": "1m",
         "5D": "5m",
         "1M": "15m",
@@ -136,96 +101,63 @@ function loadChartData(range) {
         "1Y": "1h"
     };
 
-    const interval = intervalMap[range] || "5m";
-
-    fetch(`/api/historical-data?interval=${interval}`)
-        .then(response => response.json())
+    fetch(`/api/historical-data?interval=${map[range]}`)
+        .then(r => r.json())
         .then(data => {
 
-            if (!Array.isArray(data) || data.length === 0) {
-                console.warn("No chart data available");
+            if (!data.length) {
                 updateChart([]);
                 return;
             }
 
-            const formattedData = formatCandles(data);
-            updateChart(formattedData);
-        })
-        .catch(error => {
-            console.error("Error fetching chart data:", error);
+            const formatted = data.map((item, i) => ({
+                x: i,
+                o: +item.o,
+                h: +item.h,
+                l: +item.l,
+                c: +item.c,
+                time: new Date(item.x * 1000)
+            }));
+
+            updateChart(formatted);
         });
 }
 
 // ==============================
-// FORMAT DATA
-// ==============================
-function formatCandles(rawData) {
-
-    return rawData.map((item, index) => ({
-        x: index, // stable spacing
-
-        o: Number(item.o),
-        h: Number(item.h),
-        l: Number(item.l),
-        c: Number(item.c),
-
-        // real timestamp for tooltip
-        time: new Date(item.x * 1000)
-    }));
+function updateChart(data) {
+    if (!chart) return;
+    chart.data.datasets[0].data = data;
+    chart.update();
 }
 
 // ==============================
-// UPDATE CHART
-// ==============================
-function updateChart(candles) {
-
-    if (!chartInstance) return;
-
-    chartInstance.data.datasets[0].data = candles;
-
-    // 🔥 IMPORTANT: force redraw
-    chartInstance.update();
-}
-
-// ==============================
-// TIMEFRAME BUTTONS
-// ==============================
-function initTimeframeButtons() {
+function bindButtons() {
 
     const buttons = document.querySelectorAll(".timeframe-btn");
 
-    buttons.forEach(button => {
-
-        button.addEventListener("click", function () {
+    buttons.forEach(btn => {
+        btn.addEventListener("click", function () {
 
             const range = this.dataset.range;
+            if (range === currentRange) return;
 
-            if (!range || range === activeRange) return;
+            currentRange = range;
 
-            activeRange = range;
-
-            // update UI
-            buttons.forEach(btn => btn.classList.remove("active"));
+            buttons.forEach(b => b.classList.remove("active"));
             this.classList.add("active");
 
-            loadChartData(range);
+            fetchData(range);
         });
     });
 }
 
 // ==============================
-// FORMAT TIME
-// ==============================
 function formatTime(date) {
-
-    if (!(date instanceof Date)) return "";
-
     return date.toLocaleString("en-IN", {
-        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
         day: "2-digit",
         month: "short",
- 
-        hour: "2-digit",
-        minute: "2-digit"
+        hour12: false
     });
 }
