@@ -64,8 +64,9 @@ function initializeChart() {
                     unchanged: "#999"
                 },
 
-                barThickness: 5,
-                maxBarThickness: 6
+                barThickness: 'flex',     // 🔥 auto adjust width
+                categoryPercentage: 0.8,
+                barPercentage: 0.9,
             }]
         },
         options: {
@@ -80,8 +81,9 @@ function initializeChart() {
                         tooltipFormat: "dd MMM HH:mm"
                     },
                     ticks: {
-                        maxTicksLimit: 8,
-                        autoSkip: true
+                        source: "auto",
+                        autoSkip: true,
+                        maxRotation: 0
                     }
                 },
                 y: {
