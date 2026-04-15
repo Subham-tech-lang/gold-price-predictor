@@ -127,7 +127,7 @@ def historical_data():
         interval = request.args.get("interval", "5m")
 
         data = yf.Ticker("GC=F").history(period="5d", interval=interval)
-
+        data = data.sort_index()
         if data.empty:
             return jsonify([])
 
@@ -135,7 +135,7 @@ def historical_data():
 
         for i in range(len(data)):
             candles.append({
-                "x": int(data.index[i].timestamp()),  # UNIX timestamp
+                "x": int(data.index[i].to_pydatetime().timestamp()),  # UNIX timestamp
                 "o": float(data["Open"].iloc[i]),
                 "h": float(data["High"].iloc[i]),
                 "l": float(data["Low"].iloc[i]),
