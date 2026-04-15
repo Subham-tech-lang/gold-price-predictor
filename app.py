@@ -126,31 +126,38 @@ def historical_data():
     try:
         interval = request.args.get("interval", "5m")
 
-        data = yf.Ticker("GC=F").history(period="5d", interval=interval)
-        data = data.sort_index()
-        if data.empty:
+        interval_map = {
+            "1m": ("1d", "1m"),
+            "5m": ("5d", "5m"),
+            "15m": ("1mo", "15m"),
+            "30m": ("1mo", "30m"),
+            "1h": ("3mo", "60m")
+        }
+
+        period, yf_interval = interval_map.get(interval, ("5d", "5m"))
+
+        df = yf.Ticker("GC=F").history(period=period, interval=yf_interval)
+
+        df = df.dropna()
+
+        if df.empty:
             return jsonify([])
 
         candles = []
 
-        for i in range(len(data)):
-            ts = int(data.index[i].to_pydatetime().timestamp())
-
-            # 🔥 FORCE UNIQUE TIME (VERY IMPORTANT)
-            ts = ts + i   # ensures no duplicate timestamps
-
+        for index, row in df.iterrows():
             candles.append({
-                "x": ts,
-                "o": float(data["Open"].iloc[i]),
-                "h": float(data["High"].iloc[i]),
-                "l": float(data["Low"].iloc[i]),
-                "c": float(data["Close"].iloc[i])
+                "x": int(index.timestamp()),
+                "o": float(row["Open"]),
+                "h": float(row["High"]),
+                "l": float(row["Low"]),
+                "c": float(row["Close"])
             })
 
         return jsonify(candles)
 
     except Exception as e:
-        print("Historical error:", e)
+        print("ERROR:", e)
         return jsonify([])
 
 # ================================
