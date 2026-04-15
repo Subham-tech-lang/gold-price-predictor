@@ -121,48 +121,42 @@ def live_gold_price():
 # ================================
 # HISTORICAL DATA
 # ================================
-@app.route("/api/historical-data")
-def historical_data():
+@app.route('/api/historical-data')
+def get_historical_data():
     try:
-        interval = request.args.get("interval", "5m")
+        import yfinance as yf
+        import pandas as pd
 
-        # ✅ CORRECT MAPPING (VERY IMPORTANT)
-        interval_map = {
-            "1m": ("1d", "1m"),
-            "5m": ("5d", "5m"),
-            "15m": ("1mo", "15m"),
-            "30m": ("1mo", "30m"),
-            "1h": ("3mo", "60m")
-        }
+        interval = request.args.get('interval', '5m')
 
-        period, yf_interval = interval_map.get(interval, ("5d", "5m"))
+        ticker = yf.Ticker("GC=F")
 
-        # ✅ APPLY BOTH period AND interval
-        df = yf.Ticker("GC=F").history(
-            period=period,
-            interval=yf_interval
-        )
-
-        df = df.dropna()
+        df = ticker.history(period="5d", interval=interval)
 
         if df.empty:
             return jsonify([])
 
-        candles = []
+        df = df.reset_index()
 
-        for index, row in df.iterrows():
-            candles.append({
-                "x": int(index.timestamp()),
-                "o": float(row["Open"]),
-                "h": float(row["High"]),
-                "l": float(row["Low"]),
-                "c": float(row["Close"])
+        # ✅ FIX: ensure proper columns
+        df = df[['Datetime', 'Open', 'High', 'Low', 'Close']]
+
+        # ✅ FIX: convert to clean JSON format
+        result = []
+
+        for _, row in df.iterrows():
+            result.append({
+                "x": int(row['Datetime'].timestamp()),
+                "o": float(row['Open']),
+                "h": float(row['High']),
+                "l": float(row['Low']),
+                "c": float(row['Close'])
             })
 
-        return jsonify(candles)
+        return jsonify(result)
 
     except Exception as e:
-        print("ERROR:", e)
+        print("ERROR historical:", str(e))
         return jsonify([])
 
 # ================================
