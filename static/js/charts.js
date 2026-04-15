@@ -64,9 +64,9 @@ function initializeChart() {
                     unchanged: "#999"
                 },
 
-                barThickness: 'flex',     // 🔥 auto adjust width
-                categoryPercentage: 0.8,
-                barPercentage: 0.9,
+                barThickness: 4,
+                maxBarThickness: 6,
+                minBarLength: 2,
             }]
         },
         options: {
@@ -78,12 +78,16 @@ function initializeChart() {
                 x: {
                     type: "time",
                     time: {
-                        tooltipFormat: "dd MMM HH:mm"
+                        unit: "minute",          // 🔥 FORCE PROPER GROUPING
+                        stepSize: 5,             // 🔥 MATCH YOUR DATA (5m)
+                        displayFormats: {
+                            minute: "HH:mm",
+                            hour: "dd MMM HH:mm"
+                        }
                     },
                     ticks: {
-                        source: "auto",
                         autoSkip: true,
-                        maxRotation: 0
+                        maxTicksLimit: 10
                     }
                 },
                 y: {
