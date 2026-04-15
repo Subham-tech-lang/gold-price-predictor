@@ -68,9 +68,24 @@ def prediction_stock():
             low_p = float(request.form["low"])
             volume = float(request.form["volume"])
 
-            features = np.array([[open_p, high_p, low_p, volume]])
+            # Build input dictionary
+            input_data = {
+                "open": open_p,
+                "high": high_p,
+                "low": low_p,
+                "volume": volume
+            }
 
-            pred = float(model.predict(features)[0])
+            # Fill missing features with 0 (IMPORTANT)
+            for col in feature_names:
+                if col not in input_data:
+                    input_data[col] = 0
+
+            # Create DataFrame in correct order
+            X = pd.DataFrame([input_data])[feature_names]
+
+            # Predict
+            pred = float(model.predict(X)[0])
 
             current_price = open_p
             final_pred = 0.92 * current_price + 0.08 * pred
