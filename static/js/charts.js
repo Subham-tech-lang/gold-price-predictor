@@ -1,32 +1,26 @@
-console.log("charts.js loaded ✅");
+console.log("charts.js FIXED ✅");
 
 let priceChart = null;
-let fullData = [];
+let currentRange = "5D";
 
 // ==============================
-// START
+// INIT
 // ==============================
-
 document.addEventListener("DOMContentLoaded", () => {
     initializeChart();
-    loadHistoricalData();
-    updateLive();
+    loadData(currentRange);
 
-    setInterval(updateLive, 5000);
+    setupButtons();
 });
 
 // ==============================
 // INIT CHART
 // ==============================
-
 function initializeChart() {
-
     const canvas = document.getElementById("priceChart");
     if (!canvas) return;
 
-    if (priceChart) {
-        priceChart.destroy();
-    }
+    if (priceChart) priceChart.destroy();
 
     priceChart = new Chart(canvas.getContext("2d"), {
         type: "candlestick",
@@ -50,35 +44,43 @@ function initializeChart() {
 }
 
 // ==============================
-// HISTORICAL DATA
+// LOAD DATA FROM BACKEND
 // ==============================
+function loadData(range) {
 
-function loadHistoricalData() {
+    const intervalMap = {
+        "1D": "1m",
+        "5D": "5m",
+        "1M": "15m",
+        "3M": "30m",
+        "1Y": "1h"
+    };
 
-    fetch("/api/historical-data")
+    const interval = intervalMap[range] || "5m";
+
+    fetch(`/api/historical-data?interval=${interval}`)
         .then(res => res.json())
         .then(data => {
 
             if (!data || !data.dates) return;
 
-            fullData = data.dates.map((d, i) => ({
-                x: new Date(d).getTime(),
+            const candles = data.dates.map((d, i) => ({
+                x: new Date(d * 1000),   // ✅ FIXED timestamp
                 o: Number(data.open[i]),
                 h: Number(data.high[i]),
                 l: Number(data.low[i]),
                 c: Number(data.close[i])
             }));
 
-            // Default load = full data
-            updateChart(fullData);
+            updateChart(candles);
+
         })
-        .catch(err => console.error("Historical error:", err));
+        .catch(err => console.error("Fetch error:", err));
 }
 
 // ==============================
-// UPDATE CHART (REUSABLE)
+// UPDATE CHART
 // ==============================
-
 function updateChart(data) {
     if (!priceChart) return;
 
@@ -87,75 +89,26 @@ function updateChart(data) {
 }
 
 // ==============================
-// LIVE PRICE
+// BUTTONS (MAIN FIX)
 // ==============================
+function setupButtons() {
 
-function updateLive() {
+    document.querySelectorAll(".timeframe-btn").forEach(btn => {
 
-    fetch("/api/live-gold-price")
-        .then(res => res.json())
-        .then(data => {
+        btn.addEventListener("click", function () {
 
-            const price = Number(data.current || 0);
-            const change = Number(data.change || 0);
+            const range = this.dataset.range;
 
-            const priceEl = document.getElementById("currentPriceCard");
-            const changeEl = document.getElementById("priceChange24h");
+            currentRange = range;
 
-            if (priceEl)
-                priceEl.textContent = "$" + price.toFixed(2);
+            // UI active state
+            document.querySelectorAll(".timeframe-btn")
+                .forEach(b => b.classList.remove("active"));
 
-            if (changeEl)
-                changeEl.textContent =
-                    (change >= 0 ? "+" : "") + change.toFixed(2) + "%";
-        })
-        .catch(err => console.error("Live error:", err));
+            this.classList.add("active");
+
+            // 🔥 IMPORTANT: reload from backend
+            loadData(range);
+        });
+    });
 }
-
-// ==============================
-// TIMEFRAME FILTER
-// ==============================
-
-function filterData(range) {
-
-    if (!fullData.length) return [];
-
-    const now = fullData[fullData.length - 1].x;
-
-    let ms = 0;
-
-    switch (range) {
-        case "1D": ms = 1 * 24 * 60 * 60 * 1000; break;
-        case "5D": ms = 5 * 24 * 60 * 60 * 1000; break;
-        case "1M": ms = 30 * 24 * 60 * 60 * 1000; break;
-        case "3M": ms = 90 * 24 * 60 * 60 * 1000; break;
-        case "1Y": ms = 365 * 24 * 60 * 60 * 1000; break;
-    }
-
-    const filtered = fullData.filter(d => d.x >= (now - ms));
-
-    console.log("Range:", range, "Filtered:", filtered.length);
-
-    return filtered.length ? filtered : fullData;
-}
-
-// ==============================
-// BUTTON EVENTS
-// ==============================
-
-document.addEventListener("click", (e) => {
-
-    if (!e.target.classList.contains("timeframe-btn")) return;
-
-    const range = e.target.dataset.range;
-
-    const filtered = filterData(range);
-
-    updateChart(filtered);
-
-    // OPTIONAL: highlight active button
-    document.querySelectorAll(".timeframe-btn").forEach(btn =>
-        btn.classList.remove("active")
-    );
-    e.target.classList.add("active");
-});
