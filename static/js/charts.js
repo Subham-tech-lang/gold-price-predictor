@@ -1,63 +1,58 @@
-// 🔥 REQUIRED: Register financial chart components
-Chart.register(
-    Chart.controllers.candlestick,
-    Chart.controllers.ohlc,
-    Chart.elements.CandlestickElement,
-    Chart.elements.OhlcElement,
-    Chart.scales.TimeScale,
-    Chart.scales.LinearScale,
-    Chart.plugins.Legend,
-    Chart.plugins.Tooltip
-);
-console.log("charts.js FINAL STABLE ✅");
+console.log("charts.js READY ✅");
 
 // ==============================
-// GLOBALS
+// STATE
 // ==============================
-let priceChart = null;
-let currentRange = "5D";
+let chartInstance = null;
+let selectedRange = "5D";
 
 // ==============================
-// INIT
+// BOOTSTRAP
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-    initializeChart();
-    setupButtons();
-    loadData(currentRange);
+    initChart();
+    bindTimeframeControls();
+    fetchAndRender(selectedRange);
 });
 
 // ==============================
-// INITIALIZE CHART
+// CHART SETUP
 // ==============================
-function initializeChart() {
+function initChart() {
 
     const canvas = document.getElementById("priceChart");
-    if (!canvas) return;
+    if (!canvas) {
+        console.warn("Canvas element not found");
+        return;
+    }
 
-    const ctx = canvas.getContext("2d");
+    const context = canvas.getContext("2d");
 
-    priceChart = new Chart(ctx, {
+    chartInstance = new Chart(context, {
         type: "candlestick",
+
         data: {
             datasets: [{
                 label: "Gold Price",
                 data: [],
                 parsing: false,
+                borderColor: "#999",
                 color: {
                     up: "#26a69a",
-                    down: "#ef5350"
+                    down: "#ef5350",
+                    unchanged: "#999"
                 }
             }]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
 
-            // ✅ FIX: CATEGORY SCALE (NO STACKING)
             scales: {
                 x: {
-                    type: "category"
+                    type: "category"   // ensures even spacing
                 },
                 y: {
                     beginAtZero: false
@@ -69,17 +64,17 @@ function initializeChart() {
                     display: true
                 },
 
-                // ✅ TOOLTIP WITH REAL TIME
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            const d = context.raw;
+                        label: (ctx) => {
+                            const d = ctx.raw;
+
                             return [
-                                "Time: " + d.time,
-                                "O: " + d.o,
-                                "H: " + d.h,
-                                "L: " + d.l,
-                                "C: " + d.c
+                                `Time: ${formatTime(d.time)}`,
+                                `Open: ${d.o}`,
+                                `High: ${d.h}`,
+                                `Low: ${d.l}`,
+                                `Close: ${d.c}`
                             ];
                         }
                     }
@@ -90,11 +85,11 @@ function initializeChart() {
 }
 
 // ==============================
-// LOAD DATA FROM BACKEND
+// DATA FETCH
 // ==============================
-function loadData(range) {
+function fetchAndRender(range) {
 
-    const intervalMap = {
+    const intervalLookup = {
         "1D": "1m",
         "5D": "5m",
         "1M": "15m",
@@ -102,69 +97,93 @@ function loadData(range) {
         "1Y": "1h"
     };
 
-    const interval = intervalMap[range] || "5m";
+    const interval = intervalLookup[range] || "5m";
 
     fetch(`/api/historical-data?interval=${interval}`)
-        .then(res => res.json())
-        .then(data => {
+        .then(response => response.json())
+        .then(raw => {
 
-            if (!Array.isArray(data) || data.length === 0) {
-                console.warn("No data received");
+            if (!Array.isArray(raw) || raw.length === 0) {
+                console.warn("Empty dataset");
+                updateChart([]);
                 return;
             }
 
-            // ✅ FIX: USE INDEX FOR SPACING
-            const candles = data.map((item, index) => ({
-                x: index,  // evenly spaced candles
-                o: Number(item.o),
-                h: Number(item.h),
-                l: Number(item.l),
-                c: Number(item.c),
-
-                // keep real timestamp for tooltip
-                time: new Date(item.x * 1000)
-            }));
+            const candles = transformData(raw);
 
             updateChart(candles);
-
         })
-        .catch(err => console.error("Fetch error:", err));
+        .catch(error => {
+            console.error("Data fetch failed:", error);
+        });
+}
+
+// ==============================
+// DATA TRANSFORM
+// ==============================
+function transformData(data) {
+
+    return data.map((item, index) => ({
+        x: index,   // evenly spaced candles
+        o: Number(item.o),
+        h: Number(item.h),
+        l: Number(item.l),
+        c: Number(item.c),
+
+        // preserve actual timestamp
+        time: new Date(item.x * 1000)
+    }));
 }
 
 // ==============================
 // UPDATE CHART
 // ==============================
-function updateChart(candles) {
+function updateChart(candleData) {
 
-    if (!priceChart) return;
+    if (!chartInstance) return;
 
-    priceChart.data.datasets[0].data = candles;
-
-    priceChart.update("none");
+    chartInstance.data.datasets[0].data = candleData;
+    chartInstance.update("none");
 }
 
 // ==============================
-// TIMEFRAME BUTTONS
+// TIMEFRAME BUTTON HANDLING
 // ==============================
-function setupButtons() {
+function bindTimeframeControls() {
 
-    document.querySelectorAll(".timeframe-btn").forEach(btn => {
+    const buttons = document.querySelectorAll(".timeframe-btn");
 
-        btn.addEventListener("click", function () {
+    buttons.forEach(button => {
+
+        button.addEventListener("click", function () {
 
             const range = this.dataset.range;
 
-            if (!range || range === currentRange) return;
+            if (!range || range === selectedRange) return;
 
-            currentRange = range;
+            selectedRange = range;
 
-            // UI ACTIVE STATE
-            document.querySelectorAll(".timeframe-btn")
-                .forEach(b => b.classList.remove("active"));
-
+            // update active UI state
+            buttons.forEach(btn => btn.classList.remove("active"));
             this.classList.add("active");
 
-            loadData(range);
+            fetchAndRender(range);
         });
+    });
+}
+
+// ==============================
+// UTIL: FORMAT TIME
+// ==============================
+function formatTime(dateObj) {
+
+    if (!(dateObj instanceof Date)) return "";
+
+    return dateObj.toLocaleString("en-IN", {
+        hour12: false,
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
     });
 }
