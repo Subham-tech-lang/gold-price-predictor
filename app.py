@@ -91,60 +91,7 @@ def get_model_info():
     }
 
 # ================================
-# STOCK PREDICTION (FORM)
-# ================================
-@app.route("/prediction-stock", methods=["GET", "POST"])
-def prediction_stock():
-    if request.method == "POST":
-        try:
-            open_p = float(request.form.get("open", 0))
-            high_p = float(request.form.get("high", 0))
-            low_p = float(request.form.get("low", 0))
-            volume = float(request.form.get("volume", 0))
-
-            # Live market price
-            try:
-                live = yf.Ticker("GC=F").history(period="1d")
-                market_price = float(live["Close"].iloc[-1])
-            except:
-                market_price = (open_p + high_p + low_p) / 3 or 4420
-
-            df = pd.DataFrame([{
-                "open": open_p,
-                "high": high_p,
-                "low": low_p,
-                "volume": volume
-            }])
-
-            for f in feature_names:
-                if f not in df.columns:
-                    df[f] = market_price
-
-            df = df[feature_names]
-
-            try:
-                model_pred = float(model.predict(df)[0])
-            except:
-                model_pred = market_price
-
-            pred = round((0.92 * market_price) + (0.08 * model_pred), 2)
-
-            return render_template("stock_prediction.html",
-                show_result=True,
-                prediction_result={
-                    "predicted_price": pred,
-                    "signal": "BUY" if pred > market_price else "SELL",
-                    "trend": "UP" if pred > market_price else "DOWN",
-                    "prediction_date": datetime.now().strftime("%Y-%m-%d %H:%M")
-                })
-
-        except Exception as e:
-            print("Prediction error:", e)
-
-    return render_template("stock_prediction.html", show_result=False)
-
-# ================================
-# API: LIVE PRICE
+# LIVE PRICE API
 # ================================
 @app.route("/api/live-gold-price")
 def live_gold_price():
@@ -161,14 +108,13 @@ def live_gold_price():
         return jsonify({"current": 4420, "change": 0})
 
 # ================================
-# API: HISTORICAL DATA
+# HISTORICAL DATA (FIXED)
 # ================================
 @app.route("/api/historical-data")
 def get_historical_data():
     try:
         interval = request.args.get("interval", "5m")
 
-        # ✅ INTERVAL MAPPING
         interval_map = {
             "1m": ("1d", "1m"),
             "5m": ("2d", "5m"),
@@ -190,28 +136,24 @@ def get_historical_data():
 
         return jsonify({
             "dates": [int(pd.Timestamp(x).timestamp()) for x in df[date_col]],
-            "open": df["Open"].values.tolist(),
-            "high": df["High"].values.tolist(),
-            "low": df["Low"].values.tolist(),
-            "close": df["Close"].values.tolist()
+            "open": df["Open"].tolist(),
+            "high": df["High"].tolist(),
+            "low": df["Low"].tolist(),
+            "close": df["Close"].tolist()
         })
 
     except Exception as e:
         print("ERROR historical:", e)
         return jsonify({"error": str(e)})
-    
 
 # ================================
-# API: ENTRY SIGNALS
+# ENTRY SIGNALS (FULL FIX)
 # ================================
 @app.route("/api/entry-signals")
 def entry_signals():
     try:
         interval = request.args.get("interval", "5m")
 
-        # ==============================
-        # TIMEFRAME MAPPING (CRITICAL)
-        # ==============================
         interval_map = {
             "1m": ("1d", "1m"),
             "5m": ("2d", "5m"),
@@ -222,9 +164,6 @@ def entry_signals():
 
         period, yf_interval = interval_map.get(interval, ("2d", "5m"))
 
-        # ==============================
-        # FETCH DATA
-        # ==============================
         data = yf.Ticker("GC=F").history(period=period, interval=yf_interval)
 
         if data.empty:
@@ -236,57 +175,40 @@ def entry_signals():
         high = data["High"]
         low = data["Low"]
 
-        # ==============================
-        # RSI CALCULATION
-        # ==============================
+        # RSI
         delta = close.diff()
-
         gain = delta.clip(lower=0).rolling(14).mean()
         loss = (-delta.clip(upper=0)).rolling(14).mean()
-
         rs = gain / loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
 
-        # ==============================
-        # ATR CALCULATION
-        # ==============================
-        tr1 = high - low
-        tr2 = (high - close.shift()).abs()
-        tr3 = (low - close.shift()).abs()
+        # ATR
+        tr = pd.concat([
+            high - low,
+            (high - close.shift()).abs(),
+            (low - close.shift()).abs()
+        ], axis=1).max(axis=1)
 
-        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
         atr = tr.rolling(14).mean()
 
         signals = []
 
-        # ==============================
-        # SIGNAL GENERATION (IMPROVED)
-        # ==============================
-        for i in range(len(close)):
+        for i in range(20, len(close)):
 
-            # Skip early rows
-            if i < 20:
+            if pd.isna(rsi.iloc[i]) or pd.isna(atr.iloc[i]):
                 continue
 
             price = float(close.iloc[i])
-            time = data.index[i]
-
-            rsi_val = rsi.iloc[i]
-            atr_val = atr.iloc[i]
-
-            # Skip invalid values
-            if pd.isna(rsi_val) or pd.isna(atr_val):
-                continue
+            time = int(pd.Timestamp(data.index[i]).timestamp())
 
             prev_rsi = rsi.iloc[i - 1]
+            curr_rsi = rsi.iloc[i]
+            atr_val = atr.iloc[i]
 
-            # ==========================
-            # BUY SIGNAL (RSI CROSS < 30)
-            # ==========================
-            if prev_rsi >= 30 and rsi_val < 30:
-
-                sl = round(price - (atr_val * 1.5), 2)
-                tp = round(price + (atr_val * 2), 2)
+            # BUY
+            if prev_rsi >= 30 and curr_rsi < 30:
+                sl = round(price - atr_val * 1.5, 2)
+                tp = round(price + atr_val * 2, 2)
 
                 risk = price - sl
                 reward = tp - price
@@ -298,16 +220,13 @@ def entry_signals():
                     "sl": sl,
                     "tp": tp,
                     "rr": rr,
-                    "time": int(time.timestamp())
+                    "time": time
                 })
 
-            # ==========================
-            # SELL SIGNAL (RSI CROSS > 70)
-            # ==========================
-            elif prev_rsi <= 70 and rsi_val > 70:
-
-                sl = round(price + (atr_val * 1.5), 2)
-                tp = round(price - (atr_val * 2), 2)
+            # SELL
+            elif prev_rsi <= 70 and curr_rsi > 70:
+                sl = round(price + atr_val * 1.5, 2)
+                tp = round(price - atr_val * 2, 2)
 
                 risk = sl - price
                 reward = price - tp
@@ -319,12 +238,9 @@ def entry_signals():
                     "sl": sl,
                     "tp": tp,
                     "rr": rr,
-                    "time": int(time.timestamp())
+                    "time": time
                 })
 
-        # ==============================
-        # RETURN LAST SIGNALS (SORTED)
-        # ==============================
         signals = sorted(signals, key=lambda x: x["time"])
 
         return jsonify(signals[-5:])
@@ -332,59 +248,6 @@ def entry_signals():
     except Exception as e:
         print("Signal error:", e)
         return jsonify([])
-
-# ================================
-# ✅ FIXED: 7-DAY PREDICTION API
-# ================================
-@app.route("/api/predict-7days-input", methods=["POST"])
-def predict_7days_input():
-    try:
-        data = request.get_json()
-
-        if not data:
-            return jsonify({"success": False, "error": "No data"}), 400
-
-        # ✅ Accept BOTH formats
-        if "inputs" in data:
-            current_price = float(data["inputs"][-1])
-        elif "price" in data:
-            current_price = float(data["price"])
-        else:
-            return jsonify({"success": False, "error": "Missing price"}), 400
-        predictions = []
-
-        for _ in range(7):
-            df = pd.DataFrame([{
-                "open": current_price,
-                "high": current_price,
-                "low": current_price,
-                "volume": 1000
-            }])
-
-            for f in feature_names:
-                if f not in df.columns:
-                    df[f] = current_price
-
-            df = df[feature_names]
-
-            try:
-                model_pred = float(model.predict(df)[0])
-            except:
-                model_pred = current_price
-
-            next_price = round((0.9 * current_price) + (0.1 * model_pred), 2)
-
-            predictions.append(next_price)
-            current_price = next_price
-
-        return jsonify({
-            "success": True,
-            "predictions": predictions
-        })
-
-    except Exception as e:
-        print("7-day error:", e)
-        return jsonify({"success": False, "error": str(e)}), 500
 
 # ================================
 # RUN
