@@ -1,3 +1,8 @@
+if (window.chartInitialized) {
+    console.warn("Chart already initialized ❌");
+} else {
+    window.chartInitialized = true;
+}
 console.log("charts.js FINAL STABLE ✅");
 
 // ==============================
@@ -95,40 +100,20 @@ function initChart() {
 // ==============================
 // LOAD DATA
 // ==============================
+let isFetching = false;
+
 function loadData(range) {
+    if (isFetching) return;
+    isFetching = true;
 
-    const map = {
-        "1D": "1m",
-        "5D": "5m",
-        "1M": "15m",
-        "3M": "30m",
-        "1Y": "1h"
-    };
-
-    const interval = map[range] || "5m";
-
-    fetch(`/api/historical-data?interval=${interval}`)
+    fetch(`/api/historical-data?interval=${map[range]}`)
         .then(res => res.json())
         .then(data => {
-
-            if (!Array.isArray(data) || data.length === 0) {
-                updateChart([]);
-                return;
-            }
-
-            const limited = data.slice(-80);
-
-            const formatted = limited.map(item => ({
-                x: new Date(item.x * 1000),
-                o: Number(item.o),
-                h: Number(item.h),
-                l: Number(item.l),
-                c: Number(item.c)
-            }));
-
-            updateChart(formatted);
+            updateChart(formatData(data));
         })
-        .catch(() => updateChart([]));
+        .finally(() => {
+            isFetching = false;
+        });
 }
 
 // ==============================
