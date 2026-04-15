@@ -1,55 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Visualizations - Gold Price Predictor{% endblock %}
+{% block title %}Gold Price Analytics | Chartflow{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-5 mt-5">
 
-    <!-- TITLE -->
-    <h1 class="text-center mb-5">
+    <!-- =========================
+        PAGE TITLE
+    ========================== -->
+    <h1 class="text-center fw-bold mb-5">
         Gold Price Analytics
     </h1>
 
     <!-- =========================
-        CHART CONTAINER
+        CHART SECTION
     ========================== -->
     <div class="container">
 
-        <div class="card shadow-sm">
-            <div class="card-body">
+        <div class="card shadow border-0">
+            <div class="card-body px-4 py-4">
 
-                <!-- CHART TITLE -->
-                <h3 class="text-center mb-4">
+                <!-- CHART HEADER -->
+                <h3 class="text-center mb-4 fw-semibold">
                     Gold Price Chart
                 </h3>
 
-                <!-- TIMEFRAME BUTTONS -->
-                <div class="d-flex justify-content-center mb-3 flex-wrap">
+                <!-- =========================
+                    TIMEFRAME CONTROLS
+                ========================== -->
+                <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
 
-                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="1D">
+                    <button class="btn btn-outline-primary timeframe-btn" data-range="1D">
                         1D
                     </button>
 
-                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn active" data-range="5D">
+                    <button class="btn btn-outline-primary timeframe-btn active" data-range="5D">
                         5D
                     </button>
 
-                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="1M">
+                    <button class="btn btn-outline-primary timeframe-btn" data-range="1M">
                         1M
                     </button>
 
-                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="3M">
+                    <button class="btn btn-outline-primary timeframe-btn" data-range="3M">
                         3M
                     </button>
 
-                    <button class="btn btn-outline-primary mb-2 timeframe-btn" data-range="1Y">
+                    <button class="btn btn-outline-primary timeframe-btn" data-range="1Y">
                         1Y
                     </button>
 
                 </div>
 
-                <!-- CHART -->
-                <div style="height: 500px;">
+                <!-- =========================
+                    CHART CANVAS
+                ========================== -->
+                <div style="height: 520px;">
                     <canvas id="priceChart"></canvas>
                 </div>
 
@@ -64,20 +70,20 @@
 {% block extra_scripts %}
 
 <!-- =========================
-    REQUIRED LIBRARIES (ORDER MATTERS)
+    CHART LIBRARIES (FIXED VERSIONS)
 ========================= -->
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js (stable version for financial charts) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
 
-<!-- Time adapter (REQUIRED for time scale) -->
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<!-- Date adapter (REQUIRED) -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2"></script>
 
-<!-- Candlestick plugin -->
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+<!-- Financial / Candlestick plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.0"></script>
 
 <!-- =========================
-    YOUR SCRIPT
+    CUSTOM SCRIPT
 ========================= -->
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 
