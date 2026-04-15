@@ -1,5 +1,8 @@
-console.log("charts.js FIXED ✅");
+console.log("charts.js FINAL ✅");
 
+// ==============================
+// GLOBALS
+// ==============================
 let priceChart = null;
 let currentRange = "5D";
 
@@ -8,21 +11,21 @@ let currentRange = "5D";
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
     initializeChart();
-    loadData(currentRange);
-
     setupButtons();
+    loadData(currentRange);
 });
 
 // ==============================
-// INIT CHART
+// INITIALIZE CHART
 // ==============================
 function initializeChart() {
+
     const canvas = document.getElementById("priceChart");
     if (!canvas) return;
 
-    if (priceChart) priceChart.destroy();
+    const ctx = canvas.getContext("2d");
 
-    priceChart = new Chart(canvas.getContext("2d"), {
+    priceChart = new Chart(ctx, {
         type: "candlestick",
         data: {
             datasets: [{
@@ -38,7 +41,24 @@ function initializeChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false
+            animation: false,
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        tooltipFormat: "yyyy-MM-dd HH:mm",
+                        unit: "minute"
+                    }
+                },
+                y: {
+                    beginAtZero: false
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true
+                }
+            }
         }
     });
 }
@@ -62,14 +82,22 @@ function loadData(range) {
         .then(res => res.json())
         .then(data => {
 
-            if (!data || !data.dates) return;
+            // 🔥 EXPECTED FORMAT FROM BACKEND:
+            // [
+            //   { x: 1713180000, o: 4800, h: 4820, l: 4790, c: 4810 }
+            // ]
 
-            const candles = data.dates.map((d, i) => ({
-                x: new Date(d * 1000),   // ✅ FIXED timestamp
-                o: Number(data.open[i]),
-                h: Number(data.high[i]),
-                l: Number(data.low[i]),
-                c: Number(data.close[i])
+            if (!Array.isArray(data) || data.length === 0) {
+                console.warn("No data received");
+                return;
+            }
+
+            const candles = data.map(item => ({
+                x: new Date(item.x * 1000), // timestamp → JS Date
+                o: Number(item.o),
+                h: Number(item.h),
+                l: Number(item.l),
+                c: Number(item.c)
             }));
 
             updateChart(candles);
@@ -79,40 +107,20 @@ function loadData(range) {
 }
 
 // ==============================
-// UPDATE CHART
+// UPDATE CHART (NO RE-CREATION)
 // ==============================
-function updateChart(data) {
+function updateChart(candles) {
 
     if (!priceChart) return;
 
-    // 🔥 DESTROY + RECREATE (FULL RESET)
-    const canvas = document.getElementById("priceChart");
+    priceChart.data.datasets[0].data = candles;
 
-    priceChart.destroy();
-
-    priceChart = new Chart(canvas.getContext("2d"), {
-        type: "candlestick",
-        data: {
-            datasets: [{
-                label: "Gold Price",
-                data: data,
-                parsing: false,
-                color: {
-                    up: "#26a69a",
-                    down: "#ef5350"
-                }
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false
-        }
-    });
+    // 🔥 IMPORTANT: clear internal cache
+    priceChart.update("none");
 }
 
 // ==============================
-// BUTTONS (MAIN FIX)
+// TIMEFRAME BUTTONS
 // ==============================
 function setupButtons() {
 
@@ -122,15 +130,17 @@ function setupButtons() {
 
             const range = this.dataset.range;
 
+            if (!range || range === currentRange) return;
+
             currentRange = range;
 
-            // UI active state
+            // UI ACTIVE STATE
             document.querySelectorAll(".timeframe-btn")
                 .forEach(b => b.classList.remove("active"));
 
             this.classList.add("active");
 
-            // 🔥 IMPORTANT: reload from backend
+            // LOAD NEW DATA
             loadData(range);
         });
     });
