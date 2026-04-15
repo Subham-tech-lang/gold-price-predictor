@@ -1,4 +1,4 @@
-console.log("charts.js FINAL ✅");
+console.log("charts.js FINAL STABLE ✅");
 
 // ==============================
 // GLOBALS
@@ -42,21 +42,36 @@ function initializeChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
+
+            // ✅ FIX: CATEGORY SCALE (NO STACKING)
             scales: {
                 x: {
-                    type: "time",
-                    time: {
-                        tooltipFormat: "yyyy-MM-dd HH:mm",
-                        unit: "minute"
-                    }
+                    type: "category"
                 },
                 y: {
                     beginAtZero: false
                 }
             },
+
             plugins: {
                 legend: {
                     display: true
+                },
+
+                // ✅ TOOLTIP WITH REAL TIME
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const d = context.raw;
+                            return [
+                                "Time: " + d.time,
+                                "O: " + d.o,
+                                "H: " + d.h,
+                                "L: " + d.l,
+                                "C: " + d.c
+                            ];
+                        }
+                    }
                 }
             }
         }
@@ -82,22 +97,21 @@ function loadData(range) {
         .then(res => res.json())
         .then(data => {
 
-            // 🔥 EXPECTED FORMAT FROM BACKEND:
-            // [
-            //   { x: 1713180000, o: 4800, h: 4820, l: 4790, c: 4810 }
-            // ]
-
             if (!Array.isArray(data) || data.length === 0) {
                 console.warn("No data received");
                 return;
             }
 
-            const candles = data.map(item => ({
-                x: new Date(item.x * 1000),   // ✅ FIX: use timestamp directly
+            // ✅ FIX: USE INDEX FOR SPACING
+            const candles = data.map((item, index) => ({
+                x: index,  // evenly spaced candles
                 o: Number(item.o),
                 h: Number(item.h),
                 l: Number(item.l),
-                c: Number(item.c)
+                c: Number(item.c),
+
+                // keep real timestamp for tooltip
+                time: new Date(item.x * 1000)
             }));
 
             updateChart(candles);
@@ -107,7 +121,7 @@ function loadData(range) {
 }
 
 // ==============================
-// UPDATE CHART (NO RE-CREATION)
+// UPDATE CHART
 // ==============================
 function updateChart(candles) {
 
@@ -115,7 +129,6 @@ function updateChart(candles) {
 
     priceChart.data.datasets[0].data = candles;
 
-    // 🔥 IMPORTANT: clear internal cache
     priceChart.update("none");
 }
 
@@ -140,7 +153,6 @@ function setupButtons() {
 
             this.classList.add("active");
 
-            // LOAD NEW DATA
             loadData(range);
         });
     });
