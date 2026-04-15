@@ -126,6 +126,7 @@ def historical_data():
     try:
         interval = request.args.get("interval", "5m")
 
+        # ✅ CORRECT MAPPING (VERY IMPORTANT)
         interval_map = {
             "1m": ("1d", "1m"),
             "5m": ("5d", "5m"),
@@ -136,7 +137,11 @@ def historical_data():
 
         period, yf_interval = interval_map.get(interval, ("5d", "5m"))
 
-        df = yf.Ticker("GC=F").history(period=period, interval=yf_interval)
+        # ✅ APPLY BOTH period AND interval
+        df = yf.Ticker("GC=F").history(
+            period=period,
+            interval=yf_interval
+        )
 
         df = df.dropna()
 
