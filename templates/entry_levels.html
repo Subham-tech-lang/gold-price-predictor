@@ -89,12 +89,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             const data = await res.json();
 
-            const candles = data.dates.map((d, i) => ({
-                time: d,   // ✅ DIRECT USE (NO CONVERSION)
-                open: +data.open[i],
-                high: +data.high[i],
-                low: +data.low[i],
-                close: +data.close[i]
+            const candles = data.map(item => ({
+                time: item.x,
+                open: item.o,
+                high: item.h,
+                low: item.l,
+                close: item.c
             }));
 
             candleSeries.setData(candles);
