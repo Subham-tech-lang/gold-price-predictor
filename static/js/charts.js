@@ -1,53 +1,51 @@
-console.log("charts.js READY ✅");
+console.log("charts.js FINAL FIXED ✅");
 
 // ==============================
-// STATE
+// GLOBAL STATE
 // ==============================
 let chartInstance = null;
-let selectedRange = "5D";
+let currentRange = "5D";
 
 // ==============================
-// BOOTSTRAP
+// INIT ON LOAD
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-    initChart();
-    bindTimeframeControls();
-    fetchAndRender(selectedRange);
+    initializeChart();
+    setupTimeframeButtons();
+    fetchData(currentRange);
 });
 
 // ==============================
-// CHART SETUP
+// CREATE CHART
 // ==============================
-function initChart() {
+function initializeChart() {
 
-    const canvasEl = document.getElementById("priceChart");
+    const canvas = document.getElementById("priceChart");
 
-    if (!canvasEl) {
-        console.warn("priceChart canvas not found");
+    if (!canvas) {
+        console.warn("Canvas not found");
         return;
     }
 
-    const ctx = canvasEl.getContext("2d");
+    const ctx = canvas.getContext("2d");
 
     chartInstance = new Chart(ctx, {
         type: "candlestick",
 
         data: {
-            datasets: [
-                {
-                    label: "Gold Price",
-                    data: [],
-                    parsing: false,
+            datasets: [{
+                label: "Gold Price",
+                data: [],
+                parsing: false,
 
-                    borderColor: "#999",
+                borderColor: "#888",
 
-                    color: {
-                        up: "#26a69a",
-                        down: "#ef5350",
-                        unchanged: "#999"
-                    }
+                color: {
+                    up: "#26a69a",
+                    down: "#ef5350",
+                    unchanged: "#999"
                 }
-            ]
+            }]
         },
 
         options: {
@@ -55,15 +53,10 @@ function initChart() {
             maintainAspectRatio: false,
             animation: false,
 
+            // ✅ STABLE SCALE (NO TIME BUG)
             scales: {
                 x: {
-                    type: "time",
-                    time: {
-                        unit: "minute"
-                    },
-                    ticks: {
-                        maxRotation: 0
-                    }
+                    type: "category"
                 },
                 y: {
                     beginAtZero: false
@@ -77,19 +70,18 @@ function initChart() {
                 },
 
                 tooltip: {
-                    intersect: false,
-                    mode: "index",
                     callbacks: {
-                        label: (context) => {
-                            const d = context.raw;
+                        label: function (ctx) {
+                            const d = ctx.raw;
 
                             if (!d) return "";
 
                             return [
-                                `Open: ${d.o}`,
-                                `High: ${d.h}`,
-                                `Low: ${d.l}`,
-                                `Close: ${d.c}`
+                                "Time: " + formatTime(d.time),
+                                "Open: " + d.o,
+                                "High: " + d.h,
+                                "Low: " + d.l,
+                                "Close: " + d.c
                             ];
                         }
                     }
@@ -98,12 +90,13 @@ function initChart() {
         }
     });
 }
-// ==============================
-// DATA FETCH
-// ==============================
-function fetchAndRender(range) {
 
-    const intervalLookup = {
+// ==============================
+// FETCH DATA FROM BACKEND
+// ==============================
+function fetchData(range) {
+
+    const intervalMap = {
         "1D": "1m",
         "5D": "5m",
         "1M": "15m",
@@ -111,84 +104,87 @@ function fetchAndRender(range) {
         "1Y": "1h"
     };
 
-    const interval = intervalLookup[range] || "5m";
+    const interval = intervalMap[range] || "5m";
 
     fetch(`/api/historical-data?interval=${interval}`)
-        .then(response => response.json())
-        .then(raw => {
+        .then(res => res.json())
+        .then(data => {
 
-            if (!Array.isArray(raw) || raw.length === 0) {
-                console.warn("Empty dataset");
+            if (!Array.isArray(data) || data.length === 0) {
+                console.warn("No data received");
                 updateChart([]);
                 return;
             }
 
-            const candles = transformData(raw);
-
+            const candles = transformData(data);
             updateChart(candles);
         })
-        .catch(error => {
-            console.error("Data fetch failed:", error);
-        });
+        .catch(err => console.error("Fetch error:", err));
 }
 
 // ==============================
-// DATA TRANSFORM
+// TRANSFORM DATA (KEY FIX)
 // ==============================
 function transformData(data) {
-    return data.map(item => ({
-        x: new Date(item.x * 1000), // ✅ MUST be Date object
+
+    return data.map((item, index) => ({
+        x: index,  // evenly spaced candles (stable)
+
         o: Number(item.o),
         h: Number(item.h),
         l: Number(item.l),
-        c: Number(item.c)
+        c: Number(item.c),
+
+        // keep real time for tooltip
+        time: new Date(item.x * 1000)
     }));
 }
+
 // ==============================
 // UPDATE CHART
 // ==============================
-function updateChart(candleData) {
+function updateChart(candles) {
 
     if (!chartInstance) return;
 
-    chartInstance.data.datasets[0].data = candleData;
+    chartInstance.data.datasets[0].data = candles;
     chartInstance.update("none");
 }
 
 // ==============================
-// TIMEFRAME BUTTON HANDLING
+// BUTTON CONTROLS
 // ==============================
-function bindTimeframeControls() {
+function setupTimeframeButtons() {
 
     const buttons = document.querySelectorAll(".timeframe-btn");
 
-    buttons.forEach(button => {
+    buttons.forEach(btn => {
 
-        button.addEventListener("click", function () {
+        btn.addEventListener("click", function () {
 
             const range = this.dataset.range;
 
-            if (!range || range === selectedRange) return;
+            if (!range || range === currentRange) return;
 
-            selectedRange = range;
+            currentRange = range;
 
-            // update active UI state
-            buttons.forEach(btn => btn.classList.remove("active"));
+            // update UI
+            buttons.forEach(b => b.classList.remove("active"));
             this.classList.add("active");
 
-            fetchAndRender(range);
+            fetchData(range);
         });
     });
 }
 
 // ==============================
-// UTIL: FORMAT TIME
+// FORMAT TIME FOR TOOLTIP
 // ==============================
-function formatTime(dateObj) {
+function formatTime(date) {
 
-    if (!(dateObj instanceof Date)) return "";
+    if (!(date instanceof Date)) return "";
 
-    return dateObj.toLocaleString("en-IN", {
+    return date.toLocaleString("en-IN", {
         hour12: false,
         day: "2-digit",
         month: "short",
