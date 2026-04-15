@@ -142,18 +142,30 @@ def get_historical_data():
             return jsonify({"error": "No data"})
 
         df = df.dropna().reset_index()
+
+        # ✅ FORCE SERIES (CRITICAL FIX)
+        open_ = df["Open"].values.tolist()
+        high_ = df["High"].values.tolist()
+        low_  = df["Low"].values.tolist()
+        close_ = df["Close"].values.tolist()
+
         date_col = "Datetime" if "Datetime" in df.columns else "Date"
 
+        dates_ = [
+            int(pd.Timestamp(x).timestamp())
+            for x in df[date_col]
+        ]
+
         return jsonify({
-            "dates": [int(pd.Timestamp(x).timestamp()) for x in df[date_col]],
-            "open": df["Open"].tolist(),
-            "high": df["High"].tolist(),
-            "low": df["Low"].tolist(),
-            "close": df["Close"].tolist()
+            "dates": dates_,
+            "open": open_,
+            "high": high_,
+            "low": low_,
+            "close": close_
         })
 
     except Exception as e:
-        print("Historical error:", e)
+        print("🔥 Historical API ERROR:", e)
         return jsonify({"error": str(e)})
 
 # ================================
