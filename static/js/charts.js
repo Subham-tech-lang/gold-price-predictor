@@ -62,7 +62,7 @@ function initChart() {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: v => Number(v).toFixed(2)
+                        callback: (v) => Number(v).toFixed(2)
                     }
                 }
             },
@@ -116,15 +116,14 @@ function loadData(range) {
                 return;
             }
 
-            // LIMIT DATA (IMPORTANT FIX)
-            const sliced = data.slice(-80);
+            const limited = data.slice(-80);
 
-            const formatted = sliced.map(item => ({
+            const formatted = limited.map(item => ({
                 x: new Date(item.x * 1000),
-                o: +item.o,
-                h: +item.h,
-                l: +item.l,
-                c: +item.c
+                o: Number(item.o),
+                h: Number(item.h),
+                l: Number(item.l),
+                c: Number(item.c)
             }));
 
             updateChart(formatted);
@@ -133,7 +132,7 @@ function loadData(range) {
 }
 
 // ==============================
-// UPDATE
+// UPDATE CHART
 // ==============================
 function updateChart(data) {
     if (!chartInstance) return;
@@ -143,7 +142,7 @@ function updateChart(data) {
 }
 
 // ==============================
-// BUTTONS
+// BUTTON HANDLER
 // ==============================
 function setupButtons() {
 
@@ -166,9 +165,11 @@ function setupButtons() {
 }
 
 // ==============================
-// TIME FORMAT
+// FORMAT TIME
 // ==============================
 function formatTime(date) {
+    if (!date) return "";
+
     return new Date(date).toLocaleString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
