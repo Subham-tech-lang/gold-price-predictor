@@ -1,4 +1,4 @@
-console.log("charts.js FINAL FIXED ✅");
+console.log("charts.js FINAL CLEAN ✅");
 
 // ==============================
 let chartInstance = null;
@@ -21,7 +21,6 @@ function initializeChart() {
 
     const ctx = canvas.getContext("2d");
 
-    // destroy old instance if exists
     if (chartInstance) {
         chartInstance.destroy();
     }
@@ -33,11 +32,15 @@ function initializeChart() {
                 label: "Gold Price",
                 data: [],
                 parsing: false,
+
                 color: {
                     up: "#00ff88",
                     down: "#ff3b3b",
                     unchanged: "#999"
-                }
+                },
+
+                barPercentage: 0.6,
+                categoryPercentage: 0.8
             }]
         },
         options: {
@@ -45,11 +48,21 @@ function initializeChart() {
             maintainAspectRatio: false,
             animation: false,
 
+            elements: {
+                candlestick: {
+                    barThickness: 6,
+                    borderWidth: 1
+                }
+            },
+
             scales: {
                 x: {
-                    type: "time",   // ✅ IMPORTANT FIX
+                    type: "time",
                     time: {
                         tooltipFormat: "dd MMM HH:mm"
+                    },
+                    ticks: {
+                        maxTicksLimit: 10
                     }
                 },
                 y: {
@@ -83,7 +96,7 @@ function initializeChart() {
 }
 
 // ==============================
-// FETCH DATA FROM BACKEND
+// FETCH DATA
 // ==============================
 function fetchData(range) {
 
@@ -95,25 +108,26 @@ function fetchData(range) {
         "1Y": "1h"
     };
 
-    fetch(`/api/historical-data?interval=${intervalMap[range]}`)
+    const interval = intervalMap[range] || "5m";
+
+    fetch(`/api/historical-data?interval=${interval}`)
         .then(res => res.json())
         .then(data => {
 
-            if (!data || !data.length) {
+            if (!Array.isArray(data) || data.length === 0) {
                 updateChart([]);
                 return;
             }
 
-            // ✅ CORRECT FORMAT FOR CHART.JS FINANCIAL
-            const formattedData = data.map(item => ({
-                x: new Date(item.x * 1000), // timestamp → Date
+            const formatted = data.map(item => ({
+                x: new Date(item.x * 1000),
                 o: Number(item.o),
                 h: Number(item.h),
                 l: Number(item.l),
                 c: Number(item.c)
             }));
 
-            updateChart(formattedData);
+            updateChart(formatted);
         })
         .catch(err => {
             console.error("Fetch error:", err);
@@ -142,8 +156,7 @@ function bindButtons() {
         btn.addEventListener("click", function () {
 
             const range = this.dataset.range;
-
-            if (range === currentRange) return;
+            if (!range || range === currentRange) return;
 
             currentRange = range;
 
@@ -159,6 +172,8 @@ function bindButtons() {
 // FORMAT TIME
 // ==============================
 function formatTime(date) {
+    if (!date) return "";
+
     return new Date(date).toLocaleString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
