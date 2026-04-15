@@ -125,12 +125,10 @@ def live_gold_price():
 def get_historical_data():
     try:
         import yfinance as yf
-        import pandas as pd
 
         interval = request.args.get('interval', '5m')
 
         ticker = yf.Ticker("GC=F")
-
         df = ticker.history(period="5d", interval=interval)
 
         if df.empty:
@@ -138,22 +136,20 @@ def get_historical_data():
 
         df = df.reset_index()
 
-        # ✅ FIX: ensure proper columns
-        df = df[['Datetime', 'Open', 'High', 'Low', 'Close']]
+        candles = []
 
-        # ✅ FIX: convert to clean JSON format
-        result = []
+        for i in range(len(df)):
+            row = df.iloc[i]
 
-        for _, row in df.iterrows():
-            result.append({
-                "x": int(row['Datetime'].timestamp()),
-                "o": float(row['Open']),
-                "h": float(row['High']),
-                "l": float(row['Low']),
-                "c": float(row['Close'])
+            candles.append({
+                "x": int(row["Datetime"].timestamp()),
+                "o": float(row["Open"]),
+                "h": float(row["High"]),
+                "l": float(row["Low"]),
+                "c": float(row["Close"])
             })
 
-        return jsonify(result)
+        return jsonify(candles)
 
     except Exception as e:
         print("ERROR historical:", str(e))
