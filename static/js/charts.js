@@ -1,29 +1,29 @@
-console.log("charts.js FINAL FIXED ✅");
+console.log("charts.js PRODUCTION READY ✅");
 
 // ==============================
 // GLOBAL STATE
 // ==============================
 let chartInstance = null;
-let currentRange = "5D";
+let activeRange = "5D";
 
 // ==============================
-// INIT ON LOAD
+// APP START
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-    initializeChart();
-    setupTimeframeButtons();
-    fetchData(currentRange);
+    initChart();
+    initTimeframeButtons();
+    loadChartData(activeRange);
 });
 
 // ==============================
-// CREATE CHART
+// INITIALIZE CHART
 // ==============================
-function initializeChart() {
+function initChart() {
 
     const canvas = document.getElementById("priceChart");
 
     if (!canvas) {
-        console.warn("Canvas not found");
+        console.warn("priceChart canvas missing");
         return;
     }
 
@@ -33,19 +33,22 @@ function initializeChart() {
         type: "candlestick",
 
         data: {
-            datasets: [{
-                label: "Gold Price",
-                data: [],
-                parsing: false,
+            datasets: [
+                {
+                    label: "Gold Price",
+                    data: [],
+                    parsing: false,
 
-                borderColor: "#888",
+                    borderColor: "#000",
+                    borderWidth: 1,
 
-                color: {
-                    up: "#26a69a",
-                    down: "#ef5350",
-                    unchanged: "#999"
+                    color: {
+                        up: "#00ff88",
+                        down: "#ff3b3b",
+                        unchanged: "#999"
+                    }
                 }
-            }]
+            ]
         },
 
         options: {
@@ -53,16 +56,34 @@ function initializeChart() {
             maintainAspectRatio: false,
             animation: false,
 
-            // ✅ STABLE SCALE (NO TIME BUG)
+            // ==============================
+            // SCALES (STABLE)
+            // ==============================
             scales: {
                 x: {
                     type: "category"
                 },
                 y: {
-                    beginAtZero: false
+                    beginAtZero: false,
+                    ticks: {
+                        callback: (value) => value.toFixed(2)
+                    }
                 }
             },
 
+            // ==============================
+            // CANDLE VISIBILITY FIX
+            // ==============================
+            elements: {
+                candlestick: {
+                    barThickness: 8,
+                    borderWidth: 1
+                }
+            },
+
+            // ==============================
+            // PLUGINS
+            // ==============================
             plugins: {
                 legend: {
                     display: true,
@@ -92,9 +113,9 @@ function initializeChart() {
 }
 
 // ==============================
-// FETCH DATA FROM BACKEND
+// FETCH DATA
 // ==============================
-function fetchData(range) {
+function loadChartData(range) {
 
     const intervalMap = {
         "1D": "1m",
@@ -107,35 +128,37 @@ function fetchData(range) {
     const interval = intervalMap[range] || "5m";
 
     fetch(`/api/historical-data?interval=${interval}`)
-        .then(res => res.json())
+        .then(response => response.json())
         .then(data => {
 
             if (!Array.isArray(data) || data.length === 0) {
-                console.warn("No data received");
+                console.warn("No chart data available");
                 updateChart([]);
                 return;
             }
 
-            const candles = transformData(data);
-            updateChart(candles);
+            const formattedData = formatCandles(data);
+            updateChart(formattedData);
         })
-        .catch(err => console.error("Fetch error:", err));
+        .catch(error => {
+            console.error("Error fetching chart data:", error);
+        });
 }
 
 // ==============================
-// TRANSFORM DATA (KEY FIX)
+// FORMAT DATA
 // ==============================
-function transformData(data) {
+function formatCandles(rawData) {
 
-    return data.map((item, index) => ({
-        x: index,  // evenly spaced candles (stable)
+    return rawData.map((item, index) => ({
+        x: index, // stable spacing
 
         o: Number(item.o),
         h: Number(item.h),
         l: Number(item.l),
         c: Number(item.c),
 
-        // keep real time for tooltip
+        // real timestamp for tooltip
         time: new Date(item.x * 1000)
     }));
 }
@@ -148,37 +171,39 @@ function updateChart(candles) {
     if (!chartInstance) return;
 
     chartInstance.data.datasets[0].data = candles;
-    chartInstance.update("none");
+
+    // 🔥 IMPORTANT: force redraw
+    chartInstance.update();
 }
 
 // ==============================
-// BUTTON CONTROLS
+// TIMEFRAME BUTTONS
 // ==============================
-function setupTimeframeButtons() {
+function initTimeframeButtons() {
 
     const buttons = document.querySelectorAll(".timeframe-btn");
 
-    buttons.forEach(btn => {
+    buttons.forEach(button => {
 
-        btn.addEventListener("click", function () {
+        button.addEventListener("click", function () {
 
             const range = this.dataset.range;
 
-            if (!range || range === currentRange) return;
+            if (!range || range === activeRange) return;
 
-            currentRange = range;
+            activeRange = range;
 
             // update UI
-            buttons.forEach(b => b.classList.remove("active"));
+            buttons.forEach(btn => btn.classList.remove("active"));
             this.classList.add("active");
 
-            fetchData(range);
+            loadChartData(range);
         });
     });
 }
 
 // ==============================
-// FORMAT TIME FOR TOOLTIP
+// FORMAT TIME
 // ==============================
 function formatTime(date) {
 
@@ -188,6 +213,7 @@ function formatTime(date) {
         hour12: false,
         day: "2-digit",
         month: "short",
+ 
         hour: "2-digit",
         minute: "2-digit"
     });
