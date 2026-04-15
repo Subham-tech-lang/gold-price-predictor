@@ -137,14 +137,13 @@ function fetchAndRender(range) {
 // ==============================
 function transformData(data) {
     return data.map(item => ({
-        x: item.x * 1000,
+        x: new Date(item.x * 1000), // ✅ MUST be Date object
         o: Number(item.o),
         h: Number(item.h),
         l: Number(item.l),
         c: Number(item.c)
     }));
 }
-
 // ==============================
 // UPDATE CHART
 // ==============================
