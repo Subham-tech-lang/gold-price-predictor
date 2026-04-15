@@ -82,10 +82,33 @@ function loadData(range) {
 // UPDATE CHART
 // ==============================
 function updateChart(data) {
+
     if (!priceChart) return;
 
-    priceChart.data.datasets[0].data = data;
-    priceChart.update();
+    // 🔥 DESTROY + RECREATE (FULL RESET)
+    const canvas = document.getElementById("priceChart");
+
+    priceChart.destroy();
+
+    priceChart = new Chart(canvas.getContext("2d"), {
+        type: "candlestick",
+        data: {
+            datasets: [{
+                label: "Gold Price",
+                data: data,
+                parsing: false,
+                color: {
+                    up: "#26a69a",
+                    down: "#ef5350"
+                }
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false
+        }
+    });
 }
 
 // ==============================
