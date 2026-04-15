@@ -93,7 +93,7 @@ function loadData(range) {
             }
 
             const candles = data.map(item => ({
-                x: item.x * 1000,   // ✅ FIX: use timestamp directly
+                x: new Date(item.x * 1000),   // ✅ FIX: use timestamp directly
                 o: Number(item.o),
                 h: Number(item.h),
                 l: Number(item.l),

@@ -11,26 +11,45 @@
     </h1>
 
     <!-- =========================
-        SINGLE CLEAN CHART
+        CHART CONTAINER
     ========================== -->
     <div class="container">
 
         <div class="card shadow-sm">
             <div class="card-body">
 
+                <!-- CHART TITLE -->
                 <h3 class="text-center mb-4">
                     Gold Price Chart
                 </h3>
-                <div class="d-flex justify-content-center mb-3">
 
-                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="1D">1D</button>
-                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="5D">5D</button>
-                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="1M">1M</button>
-                    <button class="btn btn-outline-primary me-2 timeframe-btn" data-range="3M">3M</button>
-                    <button class="btn btn-outline-primary timeframe-btn" data-range="1Y">1Y</button>
+                <!-- TIMEFRAME BUTTONS -->
+                <div class="d-flex justify-content-center mb-3 flex-wrap">
+
+                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="1D">
+                        1D
+                    </button>
+
+                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn active" data-range="5D">
+                        5D
+                    </button>
+
+                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="1M">
+                        1M
+                    </button>
+
+                    <button class="btn btn-outline-primary me-2 mb-2 timeframe-btn" data-range="3M">
+                        3M
+                    </button>
+
+                    <button class="btn btn-outline-primary mb-2 timeframe-btn" data-range="1Y">
+                        1Y
+                    </button>
 
                 </div>
-                <div style="height:500px;">
+
+                <!-- CHART -->
+                <div style="height: 500px;">
                     <canvas id="priceChart"></canvas>
                 </div>
 
@@ -43,11 +62,23 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- REQUIRED LIBRARIES -->
+
+<!-- =========================
+    REQUIRED LIBRARIES (ORDER MATTERS)
+========================= -->
+
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+<!-- Time adapter (REQUIRED for time scale) -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
-<!-- YOUR SCRIPT -->
+<!-- Candlestick plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+<!-- =========================
+    YOUR SCRIPT
+========================= -->
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+
 {% endblock %}
