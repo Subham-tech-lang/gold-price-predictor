@@ -100,6 +100,13 @@ function initChart() {
 // ==============================
 // LOAD DATA
 // ==============================
+const map = {
+    "1D": "1m",
+    "5D": "5m",
+    "1M": "15m",
+    "3M": "30m",
+    "1Y": "1h"
+};
 let isFetching = false;
 
 function loadData(range) {
