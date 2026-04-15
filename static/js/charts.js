@@ -12,28 +12,35 @@ Chart.register(
     Chart.plugins.Tooltip
 );
 
-console.log("charts.js FINAL WORKING ✅");
+console.log("charts.js FINAL FIXED ✅");
 
 // ==============================
-let chart = null;
+let chartInstance = null;
 let currentRange = "5D";
 
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-    createChart();
+    initializeChart();
     bindButtons();
     fetchData(currentRange);
 });
 
 // ==============================
-function createChart() {
+// CREATE CHART
+// ==============================
+function initializeChart() {
 
     const canvas = document.getElementById("priceChart");
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
 
-    chart = new Chart(ctx, {
+    // destroy old instance if exists
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
         type: "candlestick",
         data: {
             datasets: [{
@@ -54,21 +61,20 @@ function createChart() {
 
             scales: {
                 x: {
-                    type: "category"
+                    type: "time",   // ✅ IMPORTANT FIX
+                    time: {
+                        tooltipFormat: "dd MMM HH:mm"
+                    }
                 },
                 y: {
                     beginAtZero: false
                 }
             },
 
-            elements: {
-                candlestick: {
-                    barThickness: 10
-                }
-            },
-
             plugins: {
-                legend: { display: true },
+                legend: {
+                    display: true
+                },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
@@ -76,11 +82,11 @@ function createChart() {
                             if (!d) return "";
 
                             return [
-                                `Time: ${formatTime(d.time)}`,
-                                `O: ${d.o}`,
-                                `H: ${d.h}`,
-                                `L: ${d.l}`,
-                                `C: ${d.c}`
+                                `Time: ${formatTime(d.x)}`,
+                                `Open: ${d.o}`,
+                                `High: ${d.h}`,
+                                `Low: ${d.l}`,
+                                `Close: ${d.c}`
                             ];
                         }
                     }
@@ -91,9 +97,11 @@ function createChart() {
 }
 
 // ==============================
+// FETCH DATA FROM BACKEND
+// ==============================
 function fetchData(range) {
 
-    const map = {
+    const intervalMap = {
         "1D": "1m",
         "5D": "5m",
         "1M": "15m",
@@ -101,35 +109,44 @@ function fetchData(range) {
         "1Y": "1h"
     };
 
-    fetch(`/api/historical-data?interval=${map[range]}`)
-        .then(r => r.json())
+    fetch(`/api/historical-data?interval=${intervalMap[range]}`)
+        .then(res => res.json())
         .then(data => {
 
-            if (!data.length) {
+            if (!data || !data.length) {
                 updateChart([]);
                 return;
             }
 
-            const formatted = data.map((item, i) => ({
-                x: i,
-                o: +item.o,
-                h: +item.h,
-                l: +item.l,
-                c: +item.c,
-                time: new Date(item.x * 1000)
+            // ✅ CORRECT FORMAT FOR CHART.JS FINANCIAL
+            const formattedData = data.map(item => ({
+                x: new Date(item.x * 1000), // timestamp → Date
+                o: Number(item.o),
+                h: Number(item.h),
+                l: Number(item.l),
+                c: Number(item.c)
             }));
 
-            updateChart(formatted);
+            updateChart(formattedData);
+        })
+        .catch(err => {
+            console.error("Fetch error:", err);
+            updateChart([]);
         });
 }
 
 // ==============================
+// UPDATE CHART
+// ==============================
 function updateChart(data) {
-    if (!chart) return;
-    chart.data.datasets[0].data = data;
-    chart.update();
+    if (!chartInstance) return;
+
+    chartInstance.data.datasets[0].data = data;
+    chartInstance.update();
 }
 
+// ==============================
+// BUTTON HANDLER
 // ==============================
 function bindButtons() {
 
@@ -139,6 +156,7 @@ function bindButtons() {
         btn.addEventListener("click", function () {
 
             const range = this.dataset.range;
+
             if (range === currentRange) return;
 
             currentRange = range;
@@ -152,8 +170,10 @@ function bindButtons() {
 }
 
 // ==============================
+// FORMAT TIME
+// ==============================
 function formatTime(date) {
-    return date.toLocaleString("en-IN", {
+    return new Date(date).toLocaleString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
         day: "2-digit",
