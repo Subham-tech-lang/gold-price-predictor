@@ -1,3 +1,14 @@
+// 🔥 REQUIRED: Register financial chart components
+Chart.register(
+    Chart.controllers.candlestick,
+    Chart.controllers.ohlc,
+    Chart.elements.CandlestickElement,
+    Chart.elements.OhlcElement,
+    Chart.scales.TimeScale,
+    Chart.scales.LinearScale,
+    Chart.plugins.Legend,
+    Chart.plugins.Tooltip
+);
 console.log("charts.js FINAL STABLE ✅");
 
 // ==============================
