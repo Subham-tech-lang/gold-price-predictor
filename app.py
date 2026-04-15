@@ -134,8 +134,13 @@ def historical_data():
         candles = []
 
         for i in range(len(data)):
+            ts = int(data.index[i].to_pydatetime().timestamp())
+
+            # 🔥 FORCE UNIQUE TIME (VERY IMPORTANT)
+            ts = ts + i   # ensures no duplicate timestamps
+
             candles.append({
-                "x": int(data.index[i].to_pydatetime().timestamp()),  # UNIX timestamp
+                "x": ts,
                 "o": float(data["Open"].iloc[i]),
                 "h": float(data["High"].iloc[i]),
                 "l": float(data["Low"].iloc[i]),
