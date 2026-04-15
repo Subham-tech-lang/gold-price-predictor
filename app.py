@@ -122,51 +122,31 @@ def live_gold_price():
 # HISTORICAL DATA
 # ================================
 @app.route("/api/historical-data")
-def get_historical_data():
+def historical_data():
     try:
         interval = request.args.get("interval", "5m")
 
-        interval_map = {
-            "1m": ("1d", "1m"),
-            "5m": ("2d", "5m"),
-            "15m": ("5d", "15m"),
-            "30m": ("5d", "30m"),
-            "1h": ("7d", "60m")
-        }
+        data = yf.Ticker("GC=F").history(period="5d", interval=interval)
 
-        period, yf_interval = interval_map.get(interval, ("2d", "5m"))
+        if data.empty:
+            return jsonify([])
 
-        df = yf.download("GC=F", period=period, interval=yf_interval)
+        candles = []
 
-        if df.empty:
-            return jsonify({"error": "No data"})
+        for i in range(len(data)):
+            candles.append({
+                "x": int(data.index[i].timestamp()),  # UNIX timestamp
+                "o": float(data["Open"].iloc[i]),
+                "h": float(data["High"].iloc[i]),
+                "l": float(data["Low"].iloc[i]),
+                "c": float(data["Close"].iloc[i])
+            })
 
-        df = df.dropna().reset_index()
-
-        # ✅ FORCE SERIES (CRITICAL FIX)
-        open_ = df["Open"].values.tolist()
-        high_ = df["High"].values.tolist()
-        low_  = df["Low"].values.tolist()
-        close_ = df["Close"].values.tolist()
-
-        date_col = "Datetime" if "Datetime" in df.columns else "Date"
-
-        dates_ = [
-            int(pd.Timestamp(x).timestamp())
-            for x in df[date_col]
-        ]
-
-        return jsonify({
-            "dates": dates_,
-            "open": open_,
-            "high": high_,
-            "low": low_,
-            "close": close_
-        })
+        return jsonify(candles)
 
     except Exception as e:
-        print("🔥 Historical API ERROR:", e)
-        return jsonify({"error": str(e)})
+        print("Historical error:", e)
+        return jsonify([])
 
 # ================================
 # ENTRY SIGNALS (ATR + RSI)
